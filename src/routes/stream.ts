@@ -96,6 +96,7 @@ export function sendStepUpdate(executionId: string, step: {
   duration?: number;
   error?: string;
 }) {
+  console.log(`[SSE] Sending step update for ${executionId}:`, step.id, step.title, step.status);
   sendStreamUpdate(executionId, {
     type: 'step',
     step,

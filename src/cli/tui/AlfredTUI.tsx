@@ -200,113 +200,125 @@ Tips:
       // Import API client
       const { api } = await import('../lib/api-client.js');
 
-      // Send request to alfred
-      const response = await api.run({
-        prompt,
-        async: isAsync,
-        mode: executionMode,
-      });
+      // Generate requestId upfront
+      const requestId = `req-${Date.now()}`;
+      const executionId = requestId;
 
-      const requestId = response.requestId;
-      // TODO: Webhook needs to return executionId for SSE streaming
-      const executionId = response.executionId || requestId;
-      setStreamingRequestId(executionId);
+      // For sync mode with streaming: Connect to SSE FIRST, then trigger execution
+      if (!isAsync) {
+        const baseUrl = process.env.ALFRED_URL || 'http://localhost:3001';
+        const eventSource = new EventSource(`${baseUrl}/stream/${executionId}`);
 
-      if (isAsync) {
-        // Async mode - just show confirmation
-        addMessage({
-          type: 'assistant',
-          content: `✓ Task submitted asynchronously\nRequest ID: ${requestId}`,
-          metadata: { requestId },
+        setStreamingRequestId(executionId);
+
+        // Set up event handlers BEFORE sending request
+        eventSource.onmessage = (event: any) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('[TUI] SSE event received:', data.type, data);
+
+            switch (data.type) {
+              case 'connected':
+                addMessage({
+                  type: 'assistant',
+                  content: '⟳ Connected to alfred...',
+                });
+                break;
+
+              case 'step':
+                const step = data.step;
+                const icon =
+                  step.status === 'complete' ? '✓' : step.status === 'error' ? '✗' : '→';
+                const duration = step.duration ? ` (${(step.duration / 1000).toFixed(1)}s)` : '';
+                addMessage({
+                  type: 'assistant',
+                  content: `${icon} ${step.title}${duration}`,
+                });
+                break;
+
+              case 'complete':
+                eventSource.close();
+                setIsStreaming(false);
+                setStreamingRequestId(null);
+
+                // Update totals
+                if (data.metadata?.tokenCount) {
+                  setTotalTokens((prev) => prev + data.metadata.tokenCount);
+                }
+                if (data.metadata?.cost) {
+                  setTotalCost((prev) => prev + data.metadata.cost);
+                }
+
+                addMessage({
+                  type: 'assistant',
+                  content: data.output || 'Task completed',
+                  metadata: {
+                    requestId: executionId,
+                    cost: data.metadata?.cost,
+                    duration: data.metadata?.duration,
+                  },
+                });
+                break;
+
+              case 'error':
+                eventSource.close();
+                setIsStreaming(false);
+                setStreamingRequestId(null);
+
+                addMessage({
+                  type: 'system',
+                  content: `✗ Error: ${data.message || 'Unknown error'}`,
+                });
+                break;
+            }
+          } catch (err) {
+            console.error('Failed to parse SSE message:', err);
+          }
+        };
+
+        eventSource.onerror = (error: any) => {
+          console.error('SSE error:', error);
+          eventSource.close();
+          setIsStreaming(false);
+          setStreamingRequestId(null);
+        };
+
+        // Small delay to ensure SSE connection is established
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // NOW send the request (will execute and send events to our already-connected SSE)
+        api.run({
+          prompt,
+          async: false,
+          mode: executionMode,
+          requestId: requestId,
+        }).catch((error) => {
+          console.error('Webhook error:', error);
+          eventSource.close();
+          setIsStreaming(false);
+          addMessage({
+            type: 'system',
+            content: `✗ Request failed: ${error.message}`,
+          });
         });
+
         return;
       }
 
-      // Sync mode with streaming - connect to SSE
-      const baseUrl = process.env.ALFRED_URL || 'http://localhost:3001';
-      const eventSource = new EventSource(`${baseUrl}/stream/${executionId}`);
+      // Async mode - send request and just show confirmation
+      const response = await api.run({
+        prompt,
+        async: true,
+        mode: executionMode,
+        requestId: requestId,
+      });
 
-      eventSource.onmessage = (event: any) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          switch (data.type) {
-            case 'connected':
-              addMessage({
-                type: 'assistant',
-                content: '⟳ Connected to alfred...',
-              });
-              break;
-
-            case 'step':
-              const step = data.step;
-              const icon =
-                step.status === 'complete' ? '✓' : step.status === 'error' ? '✗' : '→';
-              addMessage({
-                type: 'assistant',
-                content: `${icon} ${step.title}${step.duration ? ` (${step.duration}ms)` : ''}`,
-              });
-              break;
-
-            case 'complete':
-              eventSource.close();
-              setIsStreaming(false);
-              setStreamingRequestId(null);
-
-              // Update totals
-              if (data.metadata?.tokenCount) {
-                setTotalTokens((prev) => prev + data.metadata.tokenCount);
-              }
-              if (data.metadata?.cost) {
-                setTotalCost((prev) => prev + data.metadata.cost);
-              }
-
-              addMessage({
-                type: 'assistant',
-                content: data.output || response.response || 'Task completed',
-                metadata: {
-                  requestId,
-                  cost: data.metadata?.cost,
-                  duration: data.metadata?.duration,
-                },
-              });
-              break;
-
-            case 'error':
-              eventSource.close();
-              setIsStreaming(false);
-              setStreamingRequestId(null);
-
-              addMessage({
-                type: 'system',
-                content: `✗ Error: ${data.message || 'Unknown error'}`,
-              });
-              break;
-          }
-        } catch (err) {
-          console.error('Failed to parse SSE message:', err);
-        }
-      };
-
-      eventSource.onerror = (error: any) => {
-        console.error('SSE error:', error);
-        eventSource.close();
-        setIsStreaming(false);
-        setStreamingRequestId(null);
-
-        // Fallback: show the response we got from the initial request
-        if (response.response) {
-          addMessage({
-            type: 'assistant',
-            content: response.response,
-            metadata: {
-              requestId,
-              cost: response.metadata?.totalCost,
-              duration: response.metadata?.executionTime,
-            },
-          });
-        }
-      };
+      addMessage({
+        type: 'assistant',
+        content: `✓ Task submitted asynchronously\nRequest ID: ${requestId}`,
+        metadata: { requestId },
+      });
+      return;
     } catch (error) {
       setIsStreaming(false);
       setStreamingRequestId(null);
