@@ -225,30 +225,9 @@ export const formatters: Formatters = {
         '│\n';
     }
 
-    output += chalk.bold.cyan('├─────────────────────────────────────┤\n');
-    output += chalk.bold.cyan('│') + '  Response:                      ' + chalk.bold.cyan('│\n');
-    output += chalk.bold.cyan('├─────────────────────────────────────┤\n');
-
-    const responseLines = response.response.split('\n');
-    for (const line of responseLines.slice(0, 5)) {
-      const truncated = line.length > 33 ? line.substring(0, 30) + '...' : line;
-      output +=
-        chalk.bold.cyan('│') +
-        '  ' +
-        truncated +
-        chalk.bold.cyan(' '.repeat(Math.max(0, 33 - truncated.length))) +
-        '│\n';
-    }
-
-    if (responseLines.length > 5) {
-      output +=
-        chalk.bold.cyan('│') +
-        chalk.gray('  ... (truncated) ...') +
-        chalk.bold.cyan(' '.repeat(13)) +
-        '│\n';
-    }
-
     output += chalk.bold.cyan('└─────────────────────────────────────┘\n');
+    output += '\n' + chalk.bold('Response:\n');
+    output += response.response + '\n';
 
     if (response.url && response.url.length > 0) {
       output += '\n' + chalk.bold('References:\n');
