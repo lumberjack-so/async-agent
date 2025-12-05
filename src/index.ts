@@ -22,6 +22,7 @@ import {
 import { metrics, getUptimeString } from './utils/monitoring.js';
 import { checkDatabaseHealth } from './database.js';
 import { createEnvConnectionsMiddleware } from './middleware/connections.js';
+import streamRoutes from './routes/stream.js';
 
 const app = express();
 
@@ -61,6 +62,9 @@ app.use(createEnvConnectionsMiddleware());
 // Routes
 app.post('/webhook', asyncHandler(webhookHandler));
 app.post('/webhooks/prompt', asyncHandler(webhookHandler)); // Alias
+
+// SSE Streaming endpoint
+app.use('/stream', streamRoutes);
 
 // Serve uploaded files (when using local storage)
 const storageRoot = process.env.LOCAL_STORAGE_PATH || './storage/files';

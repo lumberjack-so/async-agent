@@ -9,8 +9,10 @@ import { ChatInput } from './ChatInput.js';
 import { MessageHistory } from './MessageHistory.js';
 import { StreamingOutput } from './StreamingOutput.js';
 import { SkillsMenu } from './SkillsMenu.js';
+import { ExecutionHistory } from './ExecutionHistory.js';
+import { TokenUsageDisplay } from './TokenUsageDisplay.js';
 
-type AppMode = 'chat' | 'skills' | 'streaming' | 'menu';
+type AppMode = 'chat' | 'skills' | 'streaming' | 'history';
 
 interface Message {
   id: string;
@@ -43,6 +45,8 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
   const [currentInput, setCurrentInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingRequestId, setStreamingRequestId] = useState<string | null>(null);
+  const [totalTokens, setTotalTokens] = useState(0);
+  const [totalCost, setTotalCost] = useState(0);
 
   // Handle Escape key to exit
   useInput((input, key) => {
@@ -100,9 +104,8 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
     setMode('streaming');
 
     try {
-      // TODO: Call API with streaming
-      // For now, simulate
-      await simulateStreaming(prompt, hasAsync);
+      // Call API with streaming
+      await executeWithStreaming(prompt, hasAsync);
     } catch (error) {
       addMessage({
         type: 'system',
@@ -121,12 +124,16 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
       case '/skills':
         setMode('skills');
         break;
+      case '/history':
+        setMode('history');
+        break;
       case '/health':
-        addSystemMessage('Checking system health...');
-        // TODO: Call health endpoint
+        checkHealth();
         break;
       case '/clear':
         setMessages([]);
+        setTotalTokens(0);
+        setTotalCost(0);
         addSystemMessage('Chat cleared');
         break;
       case '/help':
@@ -138,11 +145,32 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
     }
   };
 
+  const checkHealth = async () => {
+    addSystemMessage('Checking system health...');
+    try {
+      const { api } = await import('../lib/api-client.js');
+      const health = await api.health();
+      addMessage({
+        type: 'system',
+        content: `✓ System healthy
+Status: ${health.status}
+Uptime: ${health.uptime || 'N/A'}
+Database: ${health.database || 'connected'}`,
+      });
+    } catch (error) {
+      addMessage({
+        type: 'system',
+        content: `✗ Health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+    }
+  };
+
   const showHelp = () => {
     addMessage({
       type: 'system',
       content: `Available commands:
   /skills    - Manage skills (list, create, edit, delete)
+  /history   - Browse execution history
   /health    - Check system health
   /clear     - Clear chat history
   /help      - Show this help message
@@ -155,38 +183,139 @@ Tips:
     });
   };
 
-  const simulateStreaming = async (prompt: string, isAsync: boolean) => {
-    // Simulate streaming response
-    const steps = [
-      '⟳ Analyzing request...',
-      '→ Classified as: one-off task',
-      '→ Executing agent...',
-      '✓ Complete',
-    ];
+  const executeWithStreaming = async (prompt: string, isAsync: boolean) => {
+    try {
+      // Import API client
+      const { api } = await import('../lib/api-client.js');
 
-    for (const step of steps) {
-      addMessage({
-        type: 'assistant',
-        content: step,
+      // Send request to alfred
+      const response = await api.run({
+        prompt,
+        async: isAsync,
       });
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
 
-    addMessage({
-      type: 'assistant',
-      content: `Response to: "${prompt}"\n\nThis is a simulated response. The full streaming implementation will connect to your async-agent API.`,
-      metadata: {
-        requestId: 'req-' + Date.now(),
-        cost: 0.0123,
-        duration: 2500,
-      },
-    });
+      const requestId = response.requestId;
+      // TODO: Webhook needs to return executionId for SSE streaming
+      const executionId = response.executionId || requestId;
+      setStreamingRequestId(executionId);
+
+      if (isAsync) {
+        // Async mode - just show confirmation
+        addMessage({
+          type: 'assistant',
+          content: `✓ Task submitted asynchronously\nRequest ID: ${requestId}`,
+          metadata: { requestId },
+        });
+        return;
+      }
+
+      // Sync mode with streaming - connect to SSE
+      const baseUrl = process.env.ALFRED_URL || 'http://localhost:3001';
+      const eventSource = new EventSource(`${baseUrl}/stream/${executionId}`);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          switch (data.type) {
+            case 'connected':
+              addMessage({
+                type: 'assistant',
+                content: '⟳ Connected to alfred...',
+              });
+              break;
+
+            case 'step':
+              const step = data.step;
+              const icon =
+                step.status === 'complete' ? '✓' : step.status === 'error' ? '✗' : '→';
+              addMessage({
+                type: 'assistant',
+                content: `${icon} ${step.title}${step.duration ? ` (${step.duration}ms)` : ''}`,
+              });
+              break;
+
+            case 'complete':
+              eventSource.close();
+              setIsStreaming(false);
+              setStreamingRequestId(null);
+
+              // Update totals
+              if (data.metadata?.tokenCount) {
+                setTotalTokens((prev) => prev + data.metadata.tokenCount);
+              }
+              if (data.metadata?.cost) {
+                setTotalCost((prev) => prev + data.metadata.cost);
+              }
+
+              addMessage({
+                type: 'assistant',
+                content: data.output || response.response || 'Task completed',
+                metadata: {
+                  requestId,
+                  cost: data.metadata?.cost,
+                  duration: data.metadata?.duration,
+                },
+              });
+              break;
+
+            case 'error':
+              eventSource.close();
+              setIsStreaming(false);
+              setStreamingRequestId(null);
+
+              addMessage({
+                type: 'system',
+                content: `✗ Error: ${data.message || 'Unknown error'}`,
+              });
+              break;
+          }
+        } catch (err) {
+          console.error('Failed to parse SSE message:', err);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('SSE error:', error);
+        eventSource.close();
+        setIsStreaming(false);
+        setStreamingRequestId(null);
+
+        // Fallback: show the response we got from the initial request
+        if (response.response) {
+          addMessage({
+            type: 'assistant',
+            content: response.response,
+            metadata: {
+              requestId,
+              cost: response.metadata?.totalCost,
+              duration: response.metadata?.executionTime,
+            },
+          });
+        }
+      };
+    } catch (error) {
+      setIsStreaming(false);
+      setStreamingRequestId(null);
+      throw error;
+    }
   };
 
   // Render different modes
   if (mode === 'skills') {
     return (
       <SkillsMenu
+        onBack={() => {
+          setMode('chat');
+          addSystemMessage('Returned to chat');
+        }}
+      />
+    );
+  }
+
+  if (mode === 'history') {
+    return (
+      <ExecutionHistory
         onBack={() => {
           setMode('chat');
           addSystemMessage('Returned to chat');
@@ -209,6 +338,15 @@ Tips:
           Alfred - Async Agent TUI
         </Text>
         <Box flexGrow={1} />
+        {totalTokens > 0 && (
+          <Box marginRight={2}>
+            <TokenUsageDisplay
+              tokenCount={totalTokens}
+              cost={totalCost}
+              model="claude-haiku-4-5"
+            />
+          </Box>
+        )}
         <Text dimColor>v1.0.0</Text>
       </Box>
 

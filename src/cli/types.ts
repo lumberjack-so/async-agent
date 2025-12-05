@@ -80,6 +80,8 @@ export interface RunResponse {
   response: string;
   url: string[];
   requestId: string;
+  // Execution ID for SSE streaming (TODO: webhook should return this)
+  executionId?: string;
   metadata?: {
     workflowId?: string;
     workflowName?: string;
