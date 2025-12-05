@@ -12,6 +12,7 @@ export interface WorkflowStep {
   title: string;
   status: 'pending' | 'running' | 'complete' | 'error';
   duration?: number;
+  details?: string[];  // Step execution details (tool usage, etc.)
 }
 
 interface WorkflowProgressProps {
@@ -66,14 +67,27 @@ export const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
       )}
 
       {steps.map((step) => (
-        <Box key={step.id} marginY={0}>
-          <Box marginRight={1}>{getStepIcon(step)}</Box>
-          <Text color={getStepColor(step)}>
-            Step {step.id}: {step.title}
-            {step.duration && step.status === 'complete'
-              ? ` (${(step.duration / 1000).toFixed(1)}s)`
-              : ''}
-          </Text>
+        <Box key={step.id} flexDirection="column" marginY={0}>
+          <Box>
+            <Box marginRight={1}>{getStepIcon(step)}</Box>
+            <Text color={getStepColor(step)}>
+              Step {step.id}: {step.title}
+              {step.duration && step.status === 'complete'
+                ? ` (${(step.duration / 1000).toFixed(1)}s)`
+                : ''}
+            </Text>
+          </Box>
+
+          {/* Show details only for running steps */}
+          {step.status === 'running' && step.details && step.details.length > 0 && (
+            <Box flexDirection="column" marginLeft={3}>
+              {step.details.map((detail, idx) => (
+                <Box key={idx}>
+                  <Text dimColor>⎿  {detail}</Text>
+                </Box>
+              ))}
+            </Box>
+          )}
         </Box>
       ))}
     </Box>

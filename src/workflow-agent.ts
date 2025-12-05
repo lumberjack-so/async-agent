@@ -12,6 +12,7 @@ import { config } from './config/index.js';
 import { extractResponseText, parseDisallowedTools } from './shared/agent-utils.js';
 import type { SDKMessage, SDKSystemInitMessage } from './shared/sdk-types.js';
 import { resolveStepConnections, isSDKBuiltinTool } from './connection-resolver.js';
+import { sendStreamUpdate } from './routes/stream.js';
 
 // Parse global disallowed tools from environment
 const GLOBAL_DISALLOWED_TOOLS = parseDisallowedTools();
@@ -75,6 +76,22 @@ export async function executeWorkflowAgent(
       `[WorkflowAgent] Disallowed tools count: ${disallowedTools ? disallowedTools.length : 0}`
     );
     console.log(`[WorkflowAgent] ========================================`);
+
+    // Send SSE: Step starting details
+    sendStreamUpdate(requestId, {
+      type: 'step_detail',
+      stepId: step.id,
+      detail: `Starting step ${step.id}`,
+    });
+
+    // Send SSE: Tools available
+    if (stepConnections.availableTools.length > 0) {
+      sendStreamUpdate(requestId, {
+        type: 'step_detail',
+        stepId: step.id,
+        detail: `Tools available: ${stepConnections.availableTools.join(', ')}`,
+      });
+    }
 
     // Build query options
     const queryOptions: any = {
@@ -142,6 +159,12 @@ export async function executeWorkflowAgent(
             content.forEach((block: any) => {
               if (block.type === 'tool_use') {
                 console.log(`[WorkflowAgent]   Tool: ${block.name}`);
+                // Send SSE: Tool usage
+                sendStreamUpdate(requestId, {
+                  type: 'step_detail',
+                  stepId: step.id,
+                  detail: `Using ${block.name} tool`,
+                });
               }
             });
           }
@@ -161,6 +184,13 @@ export async function executeWorkflowAgent(
     ]);
 
     console.log(`[WorkflowAgent] Step ${step.id} completed\n`);
+
+    // Send SSE: Step wrapping up
+    sendStreamUpdate(requestId, {
+      type: 'step_detail',
+      stepId: step.id,
+      detail: `Step complete, wrapping up`,
+    });
 
     // Extract response
     const responseText = extractResponseText(result);

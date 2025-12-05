@@ -254,6 +254,23 @@ Tips:
                           ...s,
                           status: step.status,
                           duration: step.duration,
+                          // Clear details when step completes
+                          details: step.status === 'complete' ? [] : s.details,
+                        }
+                      : s
+                  )
+                );
+                break;
+
+              case 'step_detail':
+                // Add detail to current step's details array
+                const { stepId, detail } = data;
+                setWorkflowSteps((prev) =>
+                  prev.map((s) =>
+                    s.id === stepId
+                      ? {
+                          ...s,
+                          details: [...(s.details || []), detail],
                         }
                       : s
                   )
