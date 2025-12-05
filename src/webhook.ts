@@ -18,6 +18,7 @@ import { logger, getCorrelationId } from './middleware/logging.js';
 import { metrics } from './utils/monitoring.js';
 import { loadSystemPrompt, loadUserPromptPrefix } from './prompts.js';
 import { WebhookResponse, ExecutionMode } from './types.js';
+import { sendCompletion } from './routes/stream.js';
 
 /**
  * Format uploaded files as text to append to agent response
@@ -292,6 +293,16 @@ async function processWebhook(
       };
     }
 
+    // Send SSE completion event
+    const executionTime = Date.now() - startTime;
+    sendCompletion(requestId, {
+      status: 'completed',
+      output: agentResponse,
+      metadata: {
+        duration: executionTime,
+      },
+    });
+
     return response;
   } catch (error: any) {
     logger.error(correlationId, 'webhook', 'Request failed', {
@@ -301,6 +312,15 @@ async function processWebhook(
 
     metrics.recordRequest(false, Date.now() - startTime);
     metrics.recordError(error.name || 'UnknownError');
+
+    // Send SSE error event
+    sendCompletion(requestId, {
+      status: 'failed',
+      output: error.message,
+      metadata: {
+        duration: Date.now() - startTime,
+      },
+    });
 
     if (workingDirectory) {
       cleanupWorkingDirectory(workingDirectory).catch((cleanupErr) => {
