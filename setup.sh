@@ -20,15 +20,25 @@ if grep -q "sk-ant-REPLACE-WITH-YOUR-ACTUAL-API-KEY" .env; then
     exit 1
 fi
 
-echo "1️⃣  Starting Docker services (PostgreSQL + Async Agent)..."
+echo "1️⃣  Configuring environment..."
+# Add DATABASE_URL to .env if not present (needed for CLI)
+if ! grep -q "^DATABASE_URL=" .env; then
+    echo "Adding DATABASE_URL to .env for CLI access..."
+    echo "" >> .env
+    echo "# Database URL for CLI (connects to Docker PostgreSQL on localhost:5432)" >> .env
+    echo 'DATABASE_URL=postgresql://asyncagent:${POSTGRES_PASSWORD:-changeme123}@localhost:5432/async_agent?schema=public&connection_limit=5' >> .env
+fi
+
+echo ""
+echo "2️⃣  Starting Docker services (PostgreSQL + Async Agent)..."
 docker-compose up -d --build
 
 echo ""
-echo "2️⃣  Installing dependencies..."
+echo "3️⃣  Installing dependencies..."
 npm install
 
 echo ""
-echo "3️⃣  Linking Alfred CLI globally..."
+echo "4️⃣  Linking Alfred CLI globally..."
 npm link
 
 echo ""
