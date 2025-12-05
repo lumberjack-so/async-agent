@@ -8,6 +8,7 @@
 import fs from 'fs/promises';
 import { executeWorkflowAgent } from './workflow-agent.js';
 import { AgentResponse, Workflow, McpConnections, WorkflowAgentResponse, ExecutionStepMetadata } from './types.js';
+import { sendStepUpdate } from './routes/stream.js';
 
 /**
  * Orchestrate multi-step workflow execution
@@ -51,6 +52,7 @@ export async function executeWorkflowOrchestrator(
     for (let i = 0; i < sortedSteps.length; i++) {
       const step = sortedSteps[i];
       const isFirstStep = i === 0;
+      const stepStartTime = Date.now();
 
       console.log(
         `[Orchestrator] >> Starting step ${step.id}/${sortedSteps.length}${isFirstStep ? ' (initial)' : ' (forking)'}`
@@ -58,6 +60,13 @@ export async function executeWorkflowOrchestrator(
       console.log(
         `[Orchestrator]    Session ID: ${sessionId || 'NEW'}`
       );
+
+      // Send SSE: Step started
+      sendStepUpdate(requestId, {
+        id: step.id,
+        title: step.prompt.substring(0, 80) + (step.prompt.length > 80 ? '...' : ''),
+        status: 'running',
+      });
 
       // Execute step
       const stepResult: WorkflowAgentResponse = await executeWorkflowAgent({
@@ -85,9 +94,19 @@ export async function executeWorkflowOrchestrator(
       // Collect traces
       allTraces.push(...(stepResult.trace || []));
 
+      const stepDuration = Date.now() - stepStartTime;
+
       console.log(
         `[Orchestrator] << Completed step ${step.id}/${sortedSteps.length}\n`
       );
+
+      // Send SSE: Step completed
+      sendStepUpdate(requestId, {
+        id: step.id,
+        title: step.prompt.substring(0, 80) + (step.prompt.length > 80 ? '...' : ''),
+        status: 'complete',
+        duration: stepDuration,
+      });
 
       // Small delay between steps for stability
       if (i < sortedSteps.length - 1) {
@@ -104,14 +123,24 @@ export async function executeWorkflowOrchestrator(
     console.log(`[Orchestrator] >> Starting FINAL SYNTHESIS STEP`);
     console.log(`[Orchestrator]    Forking from sessionId: ${sessionId}`);
 
+    const synthesisStepId = sortedSteps.length + 1;
+    const synthesisStartTime = Date.now();
+
     const synthesisStep = {
-      id: sortedSteps.length + 1,
+      id: synthesisStepId,
       prompt: `Based on all the information you've gathered in the previous steps, provide a complete, natural response to the user's original request: "${userPrompt}"
 
 Provide a clear, comprehensive answer that incorporates all the relevant data you've collected. Do not reference "steps" or "previous work" - just give the user what they asked for in a natural, helpful way.`,
       guidance: 'Synthesize all previous work into one complete response',
       allowedTools: [] as string[], // No tools needed - just synthesize
     };
+
+    // Send SSE: Synthesis started
+    sendStepUpdate(requestId, {
+      id: synthesisStepId,
+      title: 'Synthesizing final response...',
+      status: 'running',
+    });
 
     const synthesisResult: WorkflowAgentResponse = await executeWorkflowAgent({
       step: synthesisStep,
@@ -125,8 +154,18 @@ Provide a clear, comprehensive answer that incorporates all the relevant data yo
       // mcpConnections removed - resolved per-step now
     });
 
+    const synthesisDuration = Date.now() - synthesisStartTime;
+
     console.log(`[Orchestrator]    Synthesis complete`);
     console.log(`[Orchestrator]    Final sessionId: ${synthesisResult.sessionId}`);
+
+    // Send SSE: Synthesis completed
+    sendStepUpdate(requestId, {
+      id: synthesisStepId,
+      title: 'Synthesizing final response...',
+      status: 'complete',
+      duration: synthesisDuration,
+    });
 
     // Collect synthesis trace
     allTraces.push(...(synthesisResult.trace || []));
