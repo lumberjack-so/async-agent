@@ -8,7 +8,7 @@
 import fs from 'fs/promises';
 import { executeWorkflowAgent } from './workflow-agent.js';
 import { AgentResponse, Workflow, McpConnections, WorkflowAgentResponse, ExecutionStepMetadata } from './types.js';
-import { sendStepUpdate } from './routes/stream.js';
+import { sendStepUpdate, sendStreamUpdate } from './routes/stream.js';
 
 /**
  * Orchestrate multi-step workflow execution
@@ -45,6 +45,31 @@ export async function executeWorkflowOrchestrator(
     console.log(`[Orchestrator] User prompt: "${userPrompt}"`);
     console.log(`[Orchestrator] ========================================\n`);
 
+    // Send conversational intro
+    sendStreamUpdate(requestId, {
+      type: 'commentary',
+      message: `Perfect! I'll use my **${workflow.name}** skill for this.`,
+    });
+
+    sendStreamUpdate(requestId, {
+      type: 'commentary',
+      message: `This workflow has ${sortedSteps.length} steps. Let me walk you through them...`,
+    });
+
+    // Send workflow metadata with all steps
+    sendStreamUpdate(requestId, {
+      type: 'workflow',
+      workflow: {
+        name: workflow.name,
+        totalSteps: sortedSteps.length,
+        steps: sortedSteps.map(s => ({
+          id: s.id,
+          title: s.prompt.substring(0, 100),
+          status: 'pending',
+        })),
+      },
+    });
+
     let sessionId: string | null = null;
     let allTraces: any[] = [];
 
@@ -60,6 +85,19 @@ export async function executeWorkflowOrchestrator(
       console.log(
         `[Orchestrator]    Session ID: ${sessionId || 'NEW'}`
       );
+
+      // Send conversational commentary
+      if (i === 0) {
+        sendStreamUpdate(requestId, {
+          type: 'commentary',
+          message: `Starting with Step ${step.id}...`,
+        });
+      } else {
+        sendStreamUpdate(requestId, {
+          type: 'commentary',
+          message: `Moving on to Step ${step.id}...`,
+        });
+      }
 
       // Send SSE: Step started
       sendStepUpdate(requestId, {

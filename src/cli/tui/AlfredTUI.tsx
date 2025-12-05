@@ -12,6 +12,7 @@ import { StreamingOutput } from './StreamingOutput.js';
 import { SkillsMenu } from './SkillsMenu.js';
 import { ExecutionHistory } from './ExecutionHistory.js';
 import { TokenUsageDisplay } from './TokenUsageDisplay.js';
+import { WorkflowProgress, WorkflowStep } from './WorkflowProgress.js';
 
 type AppMode = 'chat' | 'skills' | 'streaming' | 'history';
 type ExecutionMode = 'orchestrator' | 'classifier' | 'default';
@@ -50,6 +51,10 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
   const [streamingRequestId, setStreamingRequestId] = useState<string | null>(null);
   const [totalTokens, setTotalTokens] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
+
+  // Workflow progress state
+  const [workflowName, setWorkflowName] = useState<string | null>(null);
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
 
   // Handle keyboard shortcuts
   useInput((input, key) => {
@@ -225,21 +230,44 @@ Tips:
                 });
                 break;
 
-              case 'step':
-                const step = data.step;
-                const icon =
-                  step.status === 'complete' ? '✓' : step.status === 'error' ? '✗' : '→';
-                const duration = step.duration ? ` (${(step.duration / 1000).toFixed(1)}s)` : '';
+              case 'commentary':
+                // Show conversational commentary messages
                 addMessage({
                   type: 'assistant',
-                  content: `${icon} ${step.title}${duration}`,
+                  content: data.message,
                 });
+                break;
+
+              case 'workflow':
+                // Initialize workflow progress - show all steps upfront
+                setWorkflowName(data.workflow.name);
+                setWorkflowSteps(data.workflow.steps);
+                break;
+
+              case 'step':
+                // Update existing workflow step (don't append new message)
+                const step = data.step;
+                setWorkflowSteps((prev) =>
+                  prev.map((s) =>
+                    s.id === step.id
+                      ? {
+                          ...s,
+                          status: step.status,
+                          duration: step.duration,
+                        }
+                      : s
+                  )
+                );
                 break;
 
               case 'complete':
                 eventSource.close();
                 setIsStreaming(false);
                 setStreamingRequestId(null);
+
+                // Clear workflow state
+                setWorkflowName(null);
+                setWorkflowSteps([]);
 
                 // Update totals
                 if (data.metadata?.tokenCount) {
@@ -264,6 +292,10 @@ Tips:
                 eventSource.close();
                 setIsStreaming(false);
                 setStreamingRequestId(null);
+
+                // Clear workflow state
+                setWorkflowName(null);
+                setWorkflowSteps([]);
 
                 addMessage({
                   type: 'system',
@@ -386,6 +418,16 @@ Tips:
       <Box flexDirection="column" flexGrow={1} marginBottom={1}>
         <MessageHistory messages={messages} />
       </Box>
+
+      {/* Workflow Progress (animated todo list) */}
+      {workflowSteps.length > 0 && (
+        <Box marginBottom={1}>
+          <WorkflowProgress
+            steps={workflowSteps}
+            workflowName={workflowName || undefined}
+          />
+        </Box>
+      )}
 
       {/* Streaming Output (if active) */}
       {isStreaming && mode === 'streaming' && (
