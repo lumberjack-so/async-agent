@@ -63,14 +63,6 @@ export const config = {
     disallowedTools: parseStringArrayEnv(process.env.DISALLOWED_TOOLS),
   },
 
-  // Workflow agent configuration (multi-step workflows)
-  workflow: {
-    agentModel:
-      process.env.WORKFLOW_AGENT_MODEL || 'claude-haiku-4-5',
-    classifierModel:
-      process.env.CLASSIFIER_MODEL || 'claude-haiku-4-5',
-  },
-
   // Database configuration
   database: {
     url: process.env.DATABASE_URL,
@@ -203,10 +195,6 @@ export function logConfigValidation(): void {
   console.log(
     `[Config]   - Disallowed Tools: ${config.agent.disallowedTools.length > 0 ? config.agent.disallowedTools.join(', ') : 'none'}`
   );
-
-  console.log('[Config] Workflow configuration:');
-  console.log(`[Config]   - Agent Model: ${config.workflow.agentModel}`);
-  console.log(`[Config]   - Classifier Model: ${config.workflow.classifierModel}`);
 
   console.log('[Config] Database configuration:');
   console.log(

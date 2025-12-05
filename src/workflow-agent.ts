@@ -70,7 +70,7 @@ export async function executeWorkflowAgent(
 
     // Build query options
     const queryOptions: any = {
-      model: config.workflow.agentModel,
+      model: config.agent.model,
       systemPrompt: stepSystemPrompt,
       mcpServers: mcpConnections,
       cwd: workingDirectory,

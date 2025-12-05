@@ -8,13 +8,11 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAllSkills, getSkillById } from './database.js';
 import { ClassificationResult, Workflow } from './types.js';
+import { config } from './config/index.js';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
-
-const CLASSIFIER_MODEL =
-  process.env.CLASSIFIER_MODEL || 'claude-haiku-4-5-20251001';
 
 /**
  * Classify user prompt to determine if it matches a workflow
@@ -74,7 +72,7 @@ RULES:
     console.log('[Classifier] Sending classification request to Claude');
 
     const response = await anthropic.messages.create({
-      model: CLASSIFIER_MODEL,
+      model: config.agent.model,
       max_tokens: 300,
       messages: [
         {

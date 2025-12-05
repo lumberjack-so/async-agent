@@ -47,13 +47,9 @@ services:
       PORT: 3001
       NODE_ENV: production
 
-      # Agent Configuration
+      # Agent Configuration (used for all operations: agents, workflows, classification)
       AGENT_MODEL: ${AGENT_MODEL:-claude-haiku-4-5}
       AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-300000}
-
-      # Workflow Configuration
-      WORKFLOW_AGENT_MODEL: ${WORKFLOW_AGENT_MODEL:-claude-haiku-4-5}
-      CLASSIFIER_MODEL: ${CLASSIFIER_MODEL:-claude-haiku-4-5}
 
       # Request Configuration
       REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-360000}

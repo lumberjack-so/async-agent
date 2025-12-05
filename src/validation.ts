@@ -8,6 +8,9 @@ export const webhookRequestSchema = z.object({
   /** User's prompt - required */
   prompt: z.string().min(1, 'Prompt is required').max(100000),
 
+  /** Execution mode - defaults to 'default' */
+  mode: z.enum(['classifier', 'orchestrator', 'default']).optional().default('default'),
+
   /** Optional request identifier */
   requestId: z
     .string()
@@ -20,9 +23,6 @@ export const webhookRequestSchema = z.object({
 
   /** Whether to run asynchronously */
   async: z.boolean().optional().default(false),
-
-  /** Whether to search for matching workflows (default: true) */
-  searchWorkflow: z.boolean().optional().default(true),
 
   /** Additional metadata */
   metadata: z.record(z.any()).optional(),

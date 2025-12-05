@@ -3,6 +3,14 @@
  */
 
 /**
+ * Agent execution mode
+ * - classifier: Only classify the prompt, return match info (no execution)
+ * - orchestrator: Classify and execute if workflow match found, fallback to default
+ * - default: Skip classification, execute as regular one-off agent
+ */
+export type ExecutionMode = 'classifier' | 'orchestrator' | 'default';
+
+/**
  * MCP Server configuration
  * Matches the Claude Agent SDK mcpServers format
  */
@@ -59,6 +67,9 @@ export interface WebhookRequestBody {
   /** The user's prompt */
   prompt: string;
 
+  /** Execution mode - defaults to 'default' */
+  mode?: ExecutionMode;
+
   /** Optional request identifier */
   requestId?: string;
 
@@ -84,6 +95,9 @@ export interface WebhookResponse {
 
   /** Request identifier */
   requestId?: string;
+
+  /** Classification result (present for classifier/orchestrator modes) */
+  classification?: ClassificationResult;
 
   /** Workflow that was executed (if any) */
   workflowId?: string;

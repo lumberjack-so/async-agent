@@ -60,6 +60,48 @@ npm run build
 npm start
 ```
 
+## Breaking Changes
+
+### API v2 - Unified Execution Modes
+
+**What Changed:**
+- The `searchWorkflow` boolean parameter has been removed
+- New `mode` parameter controls execution behavior
+- Consolidated to single `AGENT_MODEL` for all operations
+- Removed `WORKFLOW_AGENT_MODEL` and `CLASSIFIER_MODEL` environment variables
+
+**Migration Guide:**
+
+Old API (v1):
+```json
+{
+  "prompt": "deploy my app",
+  "searchWorkflow": true
+}
+```
+
+New API (v2):
+```json
+{
+  "prompt": "deploy my app",
+  "mode": "orchestrator"
+}
+```
+
+**Mode Mapping:**
+- `searchWorkflow: true` → `mode: "orchestrator"` (classify then execute)
+- `searchWorkflow: false` → `mode: "default"` (skip classification)
+- New: `mode: "classifier"` (only classify, don't execute)
+
+**Environment Variables:**
+- Remove: `WORKFLOW_AGENT_MODEL`, `CLASSIFIER_MODEL`
+- Keep: `AGENT_MODEL` (now used for all operations)
+
+**Response Changes:**
+- Added `classification` field (present for classifier/orchestrator modes)
+- `workflowId` and `workflow` only present when workflow was executed
+- Removed `trace` field from response (traces are internal only)
+
 ## API Endpoints
 
 ### POST /webhook (or /webhooks/prompt)
@@ -72,10 +114,16 @@ Execute a prompt through the agent.
   "prompt": "Your prompt here",
   "requestId": "optional-request-id",
   "systemPrompt": "optional system prompt override",
+  "mode": "default",
   "async": false,
   "metadata": {}
 }
 ```
+
+**Execution Modes:**
+- `classifier` - Only classify the prompt, return workflow match info (no execution)
+- `orchestrator` - Classify and execute workflow if match found, fallback to default agent
+- `default` - Skip classification, execute as regular one-off agent (default if omitted)
 
 **Response:**
 ```json
@@ -85,9 +133,23 @@ Execute a prompt through the agent.
     { "name": "file.txt", "url": "https://..." }
   ],
   "requestId": "req-123",
-  "trace": []
+  "classification": {
+    "workflowId": "skill-123",
+    "confidence": "high",
+    "reasoning": "Matched deployment workflow"
+  },
+  "workflowId": "skill-123",
+  "workflow": {
+    "id": "skill-123",
+    "name": "Deploy Application",
+    "steps": [...]
+  }
 }
 ```
+
+**Response fields:**
+- `classification` - Present for `classifier` and `orchestrator` modes
+- `workflowId`, `workflow` - Present only if workflow was executed
 
 ### GET /health
 

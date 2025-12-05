@@ -7,7 +7,7 @@
 
 import { Request, Response } from 'express';
 import { webhookRequestSchema } from './validation.js';
-import { executeAgent } from './agent.js';
+import { executeWithMode } from './agent-executor.js';
 import {
   detectFiles,
   uploadAllFiles,
@@ -17,9 +17,7 @@ import { AgentError, ValidationError } from './utils/errors.js';
 import { logger, getCorrelationId } from './middleware/logging.js';
 import { metrics } from './utils/monitoring.js';
 import { loadSystemPrompt, loadUserPromptPrefix } from './prompts.js';
-import { WebhookResponse, ClassificationResult } from './types.js';
-import { classifyWorkflow } from './workflow-classifier.js';
-import { executeWorkflowOrchestrator } from './workflow-orchestrator.js';
+import { WebhookResponse, ExecutionMode } from './types.js';
 
 /**
  * Format uploaded files as text to append to agent response
@@ -60,7 +58,7 @@ export async function webhookHandler(req: Request, res: Response) {
       requestId: providedRequestId,
       systemPrompt: requestSystemPrompt,
       async: isAsync,
-      searchWorkflow,
+      mode,
       metadata,
     } = validation.data;
 
@@ -82,7 +80,7 @@ export async function webhookHandler(req: Request, res: Response) {
         prompt,
         requestId,
         requestSystemPrompt,
-        searchWorkflow,
+        mode,
         metadata,
         correlationId,
         startTime
@@ -106,7 +104,7 @@ export async function webhookHandler(req: Request, res: Response) {
       prompt,
       requestId,
       requestSystemPrompt,
-      searchWorkflow,
+      mode,
       metadata,
       correlationId,
       startTime
@@ -134,7 +132,7 @@ async function processWebhook(
   prompt: string,
   requestId: string,
   requestSystemPrompt: string | undefined,
-  searchWorkflow: boolean,
+  mode: ExecutionMode,
   metadata: Record<string, any> | undefined,
   correlationId: string,
   startTime: number
@@ -163,80 +161,30 @@ async function processWebhook(
     const systemPrompt = requestSystemPrompt || (await loadSystemPrompt());
     const userPromptPrefix = await loadUserPromptPrefix();
 
-    // Classify workflow (if enabled)
-    let classification: ClassificationResult = {
-      workflowId: null,
-      workflowData: null,
-      confidence: 'none',
-    };
-
-    if (searchWorkflow) {
-      logger.info(correlationId, 'classifier', 'Classifying workflow');
-
-      try {
-        classification = await classifyWorkflow(prompt);
-
-        if (classification.workflowId && classification.workflowData) {
-          logger.info(
-            correlationId,
-            'classifier',
-            `Matched workflow: ${classification.workflowData.name} (${classification.workflowData.steps.length} steps, confidence: ${classification.confidence})`
-          );
-        } else {
-          logger.info(correlationId, 'classifier', 'No workflow match - using one-off agent');
-        }
-      } catch (error: any) {
-        logger.warn(
-          correlationId,
-          'classifier',
-          `Classification failed: ${error.message}. Falling back to one-off agent.`
-        );
-      }
-    } else {
-      logger.info(correlationId, 'classifier', 'Workflow search disabled');
-    }
-
-    // Execute agent (or workflow orchestrator)
-    logger.info(correlationId, 'agent', 'Starting agent execution');
+    // Execute agent with specified mode (classifier, orchestrator, or default)
+    logger.info(correlationId, 'agent', `Starting execution with mode: ${mode}`);
 
     let agentResponse: string;
     let conversationTrace: any[] | undefined;
+    let classification: any = undefined;
+    let workflow: any = undefined;
 
     try {
-      // Branch based on classification
-      if (classification.workflowId && classification.workflowData) {
-        // WORKFLOW ORCHESTRATION
-        logger.info(
-          correlationId,
-          'orchestrator',
-          `Executing ${classification.workflowData.steps.length}-step workflow`
-        );
+      const result = await executeWithMode({
+        mode: mode,
+        prompt,
+        requestId,
+        mcpConnections,
+        systemPrompt,
+        userPromptPrefix: userPromptPrefix || undefined,
+        correlationId,
+      });
 
-        const agentResult = await executeWorkflowOrchestrator(
-          classification.workflowData,
-          prompt,
-          requestId,
-          mcpConnections,
-          systemPrompt
-        );
-
-        agentResponse = agentResult.text;
-        workingDirectory = agentResult.workingDirectory;
-        conversationTrace = agentResult.trace;
-      } else {
-        // ONE-OFF AGENT
-        const agentResult = await executeAgent({
-          prompt,
-          requestId,
-          mcpConnections,
-          systemPrompt,
-          userPromptPrefix: userPromptPrefix || undefined,
-        });
-
-        agentResponse = agentResult.text;
-        workingDirectory = agentResult.workingDirectory;
-        conversationTrace = agentResult.trace;
-      }
+      agentResponse = result.text;
+      workingDirectory = result.workingDirectory;
+      conversationTrace = result.trace;
+      classification = result.classification;
+      workflow = result.workflow;
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       logger.info(
@@ -321,16 +269,22 @@ async function processWebhook(
 
     metrics.recordRequest(true, Date.now() - startTime);
 
-    // Build response with workflow info if applicable
+    // Build response with classification and workflow info if applicable
     const response: WebhookResponse = {
       response: agentResponse,
       files: uploadedFiles,
       requestId,
     };
 
-    if (classification.workflowId && classification.workflowData) {
-      response.workflowId = classification.workflowId;
-      response.workflow = classification.workflowData;
+    // Include classification result if present (classifier or orchestrator modes)
+    if (classification) {
+      response.classification = classification;
+    }
+
+    // Include workflow info if workflow was executed
+    if (workflow) {
+      response.workflowId = workflow.id;
+      response.workflow = workflow;
     }
 
     return response;
@@ -363,7 +317,7 @@ async function processWebhookAsync(
   prompt: string,
   requestId: string,
   requestSystemPrompt: string | undefined,
-  searchWorkflow: boolean,
+  mode: ExecutionMode,
   metadata: Record<string, any> | undefined,
   correlationId: string,
   startTime: number
@@ -374,7 +328,7 @@ async function processWebhookAsync(
       prompt,
       requestId,
       requestSystemPrompt,
-      searchWorkflow,
+      mode,
       metadata,
       correlationId,
       startTime
