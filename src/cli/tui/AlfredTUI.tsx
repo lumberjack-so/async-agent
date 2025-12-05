@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
+import { EventSource } from 'eventsource';
 import { ChatInput } from './ChatInput.js';
 import { MessageHistory } from './MessageHistory.js';
 import { StreamingOutput } from './StreamingOutput.js';
@@ -213,7 +214,7 @@ Tips:
       const baseUrl = process.env.ALFRED_URL || 'http://localhost:3001';
       const eventSource = new EventSource(`${baseUrl}/stream/${executionId}`);
 
-      eventSource.onmessage = (event) => {
+      eventSource.onmessage = (event: any) => {
         try {
           const data = JSON.parse(event.data);
 
@@ -275,7 +276,7 @@ Tips:
         }
       };
 
-      eventSource.onerror = (error) => {
+      eventSource.onerror = (error: any) => {
         console.error('SSE error:', error);
         eventSource.close();
         setIsStreaming(false);
