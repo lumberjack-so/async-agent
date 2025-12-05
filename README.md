@@ -4,6 +4,7 @@ A generic async agent server using Claude Agent SDK with dynamic MCP connections
 
 ## Features
 
+- **Interactive TUI**: Full-screen terminal UI with real-time streaming, chat interface, and async mode support
 - **Claude Agent SDK Integration**: Execute prompts with full agent capabilities
 - **Dynamic MCP Connections**: MCP server configurations are provided per-request via middleware
 - **Async Execution**: Support for both synchronous and asynchronous request processing
@@ -160,6 +161,93 @@ alfred health --json
 ```bash
 # Show version
 alfred version
+```
+
+### 🎨 Interactive TUI Mode
+
+Alfred includes a full-screen Terminal User Interface (TUI) similar to Claude Code, providing a persistent chat experience with real-time streaming, token tracking, and execution history.
+
+#### Launching TUI
+
+```bash
+# Default command - launches TUI
+alfred
+
+# Or explicitly
+alfred tui
+```
+
+#### TUI Features
+
+**Chat Interface**
+- 💬 **Persistent Chat**: Type your prompts directly in the input field
+- ⚡ **Real-time Streaming**: See task execution steps as they happen via SSE
+- 🟡 **Async Mode**: Add "async" at the end of your prompt to run asynchronously
+- 📊 **Token Usage**: Live display of token consumption and cost in header (when > 0 tokens used)
+- 🎨 **Syntax Highlighting**: "async" keyword highlights in yellow when detected
+
+**Slash Commands**
+- `/skills` - Interactive skills management menu (list, create, edit, delete)
+- `/history` - Browse past execution history with detailed views
+- `/health` - Check system health and database connectivity
+- `/clear` - Clear chat history and reset token counters
+- `/help` - Show available commands and tips
+
+**Keyboard Shortcuts**
+- **Enter** - Send message
+- **Escape** - First press: interrupt streaming, Second press: exit TUI
+- **Arrow keys** - Navigate menus and select options
+
+#### TUI Usage Examples
+
+```bash
+# Launch TUI
+alfred
+
+# In the TUI, type prompts directly:
+> What is 2+2?                    # Sync execution with streaming
+> Find me a Christmas present async   # Async mode (yellow highlight)
+
+# Use slash commands:
+> /skills                         # Manage skills interactively
+> /history                        # Browse execution history
+> /health                         # Check system status
+> /clear                          # Clear chat and reset tokens
+```
+
+#### Execution History Browser
+
+The `/history` command opens an interactive browser showing:
+- ✓/✗ Status icons (completed, failed, running)
+- Execution timestamps (startedAt)
+- Execution ID, duration, token count, cost
+- Full execution details with output preview
+- Navigate with arrow keys, select to view details
+
+#### Skills Management Menu
+
+The `/skills` command provides:
+- 📋 List all skills (shows status, name, trigger type)
+- ➕ Create new skill (interactive builder)
+- ✏️ Edit skill (interactive editor)
+- 🗑️ Delete skill (with confirmation)
+- ← Back to chat (returns to main chat)
+
+#### Token Usage Display
+
+When tokens > 0, the header shows:
+- 📊 Progress bar (green/yellow/red based on usage)
+- Current token count / max tokens (200,000 by default)
+- Percentage used
+- 💰 Cumulative cost in USD
+
+**Example Header:**
+```
+┌─ Alfred - Async Agent TUI ──────────────────────────────────────────┐
+│  ◆ claude-haiku-4-5                                                  │
+│  ████████░░░░░░░░░░░░ 45,320 / 200,000 (22.7%)                      │
+│  $0.0124                                                       v1.0.0│
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### CLI Environment Setup
