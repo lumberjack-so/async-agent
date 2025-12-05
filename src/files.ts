@@ -19,20 +19,29 @@ export interface DetectedFile {
 }
 
 /**
- * Detect all files in working directory
+ * Recursively walk directory and collect all files
  */
-export async function detectFiles(workingDirectory: string): Promise<DetectedFile[]> {
-  try {
-    const entries = await fs.readdir(workingDirectory, { withFileTypes: true });
-    const files: DetectedFile[] = [];
+async function walkDirectory(
+  dir: string,
+  baseDir: string,
+  files: DetectedFile[]
+): Promise<void> {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
 
-    for (const entry of entries) {
-      if (entry.isDirectory() || entry.name.startsWith('.')) {
-        continue;
-      }
+  for (const entry of entries) {
+    // Skip hidden files and directories
+    if (entry.name.startsWith('.')) {
+      continue;
+    }
 
-      const localPath = path.join(workingDirectory, entry.name);
-      const stats = await fs.stat(localPath);
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      // Recursively walk subdirectories
+      await walkDirectory(fullPath, baseDir, files);
+    } else {
+      // Regular file - check size and add to list
+      const stats = await fs.stat(fullPath);
 
       if (stats.size > MAX_FILE_SIZE_BYTES) {
         console.warn(
@@ -41,14 +50,31 @@ export async function detectFiles(workingDirectory: string): Promise<DetectedFil
         continue;
       }
 
+      // Calculate relative path from base directory
+      const relativePath = path.relative(baseDir, fullPath);
+
       files.push({
-        localPath,
-        filename: entry.name,
+        localPath: fullPath,
+        filename: relativePath, // Use relative path to preserve directory structure
         size: stats.size,
       });
     }
+  }
+}
+
+/**
+ * Detect all files in working directory (recursively)
+ */
+export async function detectFiles(workingDirectory: string): Promise<DetectedFile[]> {
+  try {
+    const files: DetectedFile[] = [];
+    await walkDirectory(workingDirectory, workingDirectory, files);
 
     console.log(`[Files] Detected ${files.length} files in ${workingDirectory}`);
+    if (files.length > 0) {
+      console.log(`[Files] File list: ${files.map(f => f.filename).join(', ')}`);
+    }
+
     return files;
   } catch (error: any) {
     if (error.code === 'ENOENT') {
@@ -75,19 +101,23 @@ export async function uploadFile(
     // Create directory if it doesn't exist
     await fs.mkdir(storagePath, { recursive: true });
 
-    const destPath = path.join(storagePath, `${timestamp}-${file.filename}`);
+    // Sanitize filename by replacing path separators with underscores
+    // Example: "output/index.html" -> "output_index.html"
+    const sanitizedFilename = file.filename.replace(/[\/\\]/g, '_');
+    const destFilename = `${timestamp}-${sanitizedFilename}`;
+    const destPath = path.join(storagePath, destFilename);
 
     // Copy file to persistent storage
     await fs.copyFile(file.localPath, destPath);
 
     // Generate URL (will be served by the app)
     const baseUrl = process.env.FILE_STORAGE_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
-    const fileUrl = `${baseUrl}/files/${identifier}/${timestamp}-${file.filename}`;
+    const fileUrl = `${baseUrl}/files/${identifier}/${destFilename}`;
 
     console.log(`[Files] Stored: ${file.filename} -> ${fileUrl}`);
 
     return {
-      name: file.filename,
+      name: file.filename, // Keep original path for user reference
       url: fileUrl,
     };
   } catch (error) {
