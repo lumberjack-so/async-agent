@@ -257,7 +257,7 @@ async function processWebhook(
 
     try {
       if (workingDirectory) {
-        const detectedFiles = await detectFiles(workingDirectory);
+        const detectedFiles = await detectFiles(workingDirectory, startTime);
 
         if (detectedFiles.length > 0) {
           logger.info(

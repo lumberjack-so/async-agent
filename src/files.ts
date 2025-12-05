@@ -19,69 +19,99 @@ export interface DetectedFile {
 }
 
 /**
- * Recursively walk directory and collect all files
+ * Recursively walk directory and collect files created after a timestamp
  */
-async function walkDirectory(
+async function walkDirectoryByTime(
   dir: string,
-  baseDir: string,
-  files: DetectedFile[]
+  startTime: number,
+  files: DetectedFile[],
+  maxDepth: number = 3,
+  currentDepth: number = 0
 ): Promise<void> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
+  // Prevent infinite recursion
+  if (currentDepth > maxDepth) {
+    return;
+  }
 
-  for (const entry of entries) {
-    // Skip hidden files and directories
-    if (entry.name.startsWith('.')) {
-      continue;
-    }
+  try {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
 
-    const fullPath = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      // Recursively walk subdirectories
-      await walkDirectory(fullPath, baseDir, files);
-    } else {
-      // Regular file - check size and add to list
-      const stats = await fs.stat(fullPath);
-
-      if (stats.size > MAX_FILE_SIZE_BYTES) {
-        console.warn(
-          `[Files] File ${entry.name} exceeds max size (${MAX_FILE_SIZE_MB}MB), skipping`
-        );
+    for (const entry of entries) {
+      // Skip hidden files and certain system directories
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') {
         continue;
       }
 
-      // Calculate relative path from base directory
-      const relativePath = path.relative(baseDir, fullPath);
+      const fullPath = path.join(dir, entry.name);
 
-      files.push({
-        localPath: fullPath,
-        filename: relativePath, // Use relative path to preserve directory structure
-        size: stats.size,
-      });
+      try {
+        if (entry.isDirectory()) {
+          // Recursively walk subdirectories
+          await walkDirectoryByTime(fullPath, startTime, files, maxDepth, currentDepth + 1);
+        } else {
+          // Check if file was created/modified after start time
+          const stats = await fs.stat(fullPath);
+          const fileModifiedTime = stats.mtimeMs;
+
+          // Only include files modified after agent started
+          if (fileModifiedTime >= startTime) {
+            // Check size limit
+            if (stats.size > MAX_FILE_SIZE_BYTES) {
+              console.warn(
+                `[Files] File ${fullPath} exceeds max size (${MAX_FILE_SIZE_MB}MB), skipping`
+              );
+              continue;
+            }
+
+            files.push({
+              localPath: fullPath,
+              filename: path.basename(fullPath),
+              size: stats.size,
+            });
+          }
+        }
+      } catch (statError: any) {
+        // Skip files we can't read (permissions, etc.)
+        if (statError.code !== 'ENOENT' && statError.code !== 'EACCES') {
+          console.warn(`[Files] Cannot stat ${fullPath}:`, statError.message);
+        }
+      }
+    }
+  } catch (readError: any) {
+    // Skip directories we can't read
+    if (readError.code !== 'ENOENT' && readError.code !== 'EACCES') {
+      console.warn(`[Files] Cannot read directory ${dir}:`, readError.message);
     }
   }
 }
 
 /**
- * Detect all files in working directory (recursively)
+ * Detect all files created in /tmp during agent execution
+ *
+ * @param workingDirectory - Agent's working directory (for reference)
+ * @param startTime - Timestamp when agent execution started (ms)
  */
-export async function detectFiles(workingDirectory: string): Promise<DetectedFile[]> {
+export async function detectFiles(
+  workingDirectory: string,
+  startTime?: number
+): Promise<DetectedFile[]> {
   try {
     const files: DetectedFile[] = [];
-    await walkDirectory(workingDirectory, workingDirectory, files);
+    const searchStartTime = startTime || Date.now() - 300000; // Default: last 5 minutes
 
-    console.log(`[Files] Detected ${files.length} files in ${workingDirectory}`);
+    console.log(`[Files] Searching /tmp for files created after ${new Date(searchStartTime).toISOString()}`);
+
+    // Search entire /tmp directory for recently created files
+    await walkDirectoryByTime('/tmp', searchStartTime, files);
+
+    console.log(`[Files] Detected ${files.length} files created during execution`);
     if (files.length > 0) {
       console.log(`[Files] File list: ${files.map(f => f.filename).join(', ')}`);
     }
 
     return files;
   } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      console.warn(`[Files] Directory not found: ${workingDirectory}`);
-    } else {
-      console.error(`[Files] Error detecting files:`, error);
-    }
+    console.error(`[Files] Error detecting files:`, error);
     return [];
   }
 }
