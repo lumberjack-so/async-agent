@@ -326,7 +326,6 @@ async function processWebhook(
       response: agentResponse,
       files: uploadedFiles,
       requestId,
-      trace: conversationTrace,
     };
 
     if (classification.workflowId && classification.workflowData) {

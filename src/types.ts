@@ -85,9 +85,6 @@ export interface WebhookResponse {
   /** Request identifier */
   requestId?: string;
 
-  /** Conversation trace (for debugging) */
-  trace?: any[];
-
   /** Workflow that was executed (if any) */
   workflowId?: string;
   workflow?: Workflow;
