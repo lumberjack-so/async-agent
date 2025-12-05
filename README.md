@@ -38,6 +38,129 @@ curl -X POST http://localhost:3001/webhook \
 
 **See [README.docker.md](README.docker.md) for complete Docker documentation.**
 
+## Alfred CLI
+
+Alfred is a command-line interface for managing your async agent system. It provides an easy way to manage skills, configure models, and send tasks directly from your terminal.
+
+### Installation
+
+The CLI is built into the project and uses the same database as the async-agent server.
+
+```bash
+# Build the project (includes CLI)
+npm run build
+
+# The CLI is now available as 'alfred' command via npm
+# You can run it directly:
+node dist/cli/index.js --help
+
+# Or install globally:
+npm link
+alfred --help
+```
+
+### CLI Commands
+
+#### Skills Management
+
+```bash
+# List all skills
+alfred skills list
+alfred skills list --active
+alfred skills list --json
+
+# View skill details
+alfred skills view <skill-id>
+alfred skills view <skill-id> --json
+
+# Create new skill (interactive TUI)
+alfred skills create
+
+# Edit existing skill (interactive TUI)
+alfred skills edit <skill-id>
+
+# Delete skill
+alfred skills delete <skill-id>
+alfred skills delete <skill-id> --yes  # Skip confirmation
+```
+
+#### Model Configuration
+
+```bash
+# Get current model
+alfred config model get
+
+# Set model
+alfred config model set claude-sonnet-4-5-20251022
+```
+
+Available models:
+- `claude-haiku-4-5-20251001` (fast, cost-effective)
+- `claude-sonnet-4-5-20251022` (balanced, recommended)
+- `claude-opus-4-5-20251101` (most capable)
+
+#### Task Execution
+
+```bash
+# Send task to alfred (sync)
+alfred run "What is 2+2?"
+
+# Async execution
+alfred run "Deploy my app" --async
+
+# Specify execution mode
+alfred run "Find me a Christmas present for John" --mode orchestrator
+alfred run "Calculate pi to 10 digits" --mode default
+
+# With custom request ID
+alfred run "Hello" --request-id my-custom-id
+
+# With metadata (JSON string)
+alfred run "Test" --metadata '{"source":"cli","priority":"high"}'
+
+# JSON output
+alfred run "Test" --json
+```
+
+#### System Health
+
+```bash
+# Check server health
+alfred health
+alfred health --json
+```
+
+#### Version Info
+
+```bash
+# Show version
+alfred version
+```
+
+### CLI Environment Setup
+
+The CLI requires a `.env` file in the project root with at least:
+
+```bash
+DATABASE_URL=postgresql://asyncagent:changeme123@localhost:5432/async_agent
+ANTHROPIC_API_KEY=sk-ant-your-api-key
+```
+
+The CLI connects to your local PostgreSQL database (exposed on port 5432 by Docker Compose).
+
+### Interactive Skill Builder
+
+The `alfred skills create` and `alfred skills edit` commands launch an interactive TUI (Terminal User Interface) that guides you through:
+
+1. **Basic Info**: Name, description, trigger type, connections
+2. **Add Steps**: Define each step with prompts, guidance, allowed tools
+3. **Review**: Confirm before saving
+
+Navigation:
+- Use **Tab** or **Enter** to move between fields
+- Press **Enter** to continue to next screen
+- Press **Ctrl+C** to cancel at any time
+
 ### 📦 Manual Setup
 
 ```bash
