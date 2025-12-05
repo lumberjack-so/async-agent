@@ -66,6 +66,7 @@ export async function executeWorkflowOrchestrator(
           id: s.id,
           title: s.prompt.substring(0, 100),
           status: 'pending',
+          details: [],  // Initialize empty details array
         })),
       },
     });

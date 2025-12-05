@@ -26,6 +26,15 @@ export const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
   currentStepId,
   workflowName,
 }) => {
+  // Debug: Log what data the component is receiving
+  console.log('[WorkflowProgress] Rendering with steps:', steps.map(s => ({
+    id: s.id,
+    status: s.status,
+    hasDetails: !!s.details,
+    detailCount: s.details?.length || 0,
+    details: s.details
+  })));
+
   const getStepIcon = (step: WorkflowStep) => {
     switch (step.status) {
       case 'pending':
@@ -81,11 +90,14 @@ export const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
           {/* Show details only for running steps */}
           {step.status === 'running' && step.details && step.details.length > 0 && (
             <Box flexDirection="column" marginLeft={3}>
-              {step.details.map((detail, idx) => (
-                <Box key={idx}>
-                  <Text dimColor>⎿  {detail}</Text>
-                </Box>
-              ))}
+              {(() => {
+                console.log(`[WorkflowProgress] Rendering details for step ${step.id}:`, step.details);
+                return step.details.map((detail, idx) => (
+                  <Box key={idx}>
+                    <Text dimColor>⎿  {detail}</Text>
+                  </Box>
+                ));
+              })()}
             </Box>
           )}
         </Box>
