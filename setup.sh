@@ -36,20 +36,32 @@ echo "2️⃣  Starting Docker services (PostgreSQL + Async Agent)..."
 docker-compose up -d --build
 
 echo ""
-echo "3️⃣  Installing dependencies..."
+echo "3️⃣  Waiting for database to be ready..."
+sleep 3
+
+echo ""
+echo "4️⃣  Seeding default skills (Christmas Present Finder)..."
+docker-compose exec -T postgres psql -U asyncagent -d async_agent < scripts/seed-christmas-skill.sql 2>/dev/null || echo "⚠️  Skill already seeded or seed failed (non-fatal)"
+
+echo ""
+echo "5️⃣  Installing dependencies..."
 npm install
 
 echo ""
-echo "4️⃣  Linking Alfred CLI globally..."
+echo "6️⃣  Linking Alfred CLI globally..."
 npm link
 
 echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "Try these commands:"
+echo "  alfred               # Launch interactive TUI"
 echo "  alfred --help        # Show CLI help"
 echo "  alfred health        # Check server health"
 echo "  alfred skills list   # List all skills"
+echo ""
+echo "Example skill (already seeded):"
+echo "  In TUI (orchestrator mode): \"Find a Christmas present for Elon Musk\""
 echo ""
 echo "Server URLs:"
 echo "  API: http://localhost:3001"
