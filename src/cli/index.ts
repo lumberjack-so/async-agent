@@ -18,13 +18,18 @@ import { runCommand } from './commands/run.js';
 import { healthCommand } from './commands/health.js';
 import { versionCommand } from './commands/version.js';
 import { modelConfigCommand } from './commands/config/model.js';
+import { tuiCommand } from './commands/tui.js';
 
 const program = new Command();
 
 program
   .name('alfred')
   .description('Manage your async agent system')
-  .version('1.0.0');
+  .version('1.0.0')
+  .action(async () => {
+    // If no command specified, launch TUI mode
+    await tuiCommand();
+  });
 
 // ============================================
 // SKILLS COMMANDS
@@ -122,6 +127,17 @@ program
   .description('Show version information')
   .action(async () => {
     await versionCommand();
+  });
+
+// ============================================
+// TUI COMMAND
+// ============================================
+
+program
+  .command('tui')
+  .description('Launch interactive TUI mode (default)')
+  .action(async () => {
+    await tuiCommand();
   });
 
 program.parse();
