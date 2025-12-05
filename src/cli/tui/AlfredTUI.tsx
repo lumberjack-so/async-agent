@@ -14,6 +14,7 @@ import { ExecutionHistory } from './ExecutionHistory.js';
 import { TokenUsageDisplay } from './TokenUsageDisplay.js';
 
 type AppMode = 'chat' | 'skills' | 'streaming' | 'history';
+type ExecutionMode = 'orchestrator' | 'classifier' | 'default';
 
 interface Message {
   id: string;
@@ -35,6 +36,7 @@ interface AlfredTUIProps {
 export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
   const { exit } = useApp();
   const [mode, setMode] = useState<AppMode>('chat');
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>('orchestrator');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -49,7 +51,7 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
   const [totalTokens, setTotalTokens] = useState(0);
   const [totalCost, setTotalCost] = useState(0);
 
-  // Handle Escape key to exit
+  // Handle keyboard shortcuts
   useInput((input, key) => {
     if (key.escape) {
       if (isStreaming) {
@@ -62,6 +64,14 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
         exit();
         onExit?.();
       }
+    }
+
+    // Tab: cycle through execution modes (only in chat mode and when not streaming)
+    if (key.tab && mode === 'chat' && !isStreaming) {
+      const modes: ExecutionMode[] = ['orchestrator', 'classifier', 'default'];
+      const currentIndex = modes.indexOf(executionMode);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      setExecutionMode(modes[nextIndex]);
     }
   });
 
@@ -177,6 +187,7 @@ Database: ${health.database || 'connected'}`,
   /help      - Show this help message
 
 Tips:
+  • Press Tab to cycle execution mode (orchestrator/classifier/default)
   • Type your prompt and press Enter to execute
   • Add "async" at the end to run asynchronously
   • Press Escape to interrupt streaming or exit
@@ -193,6 +204,7 @@ Tips:
       const response = await api.run({
         prompt,
         async: isAsync,
+        mode: executionMode,
       });
 
       const requestId = response.requestId;
@@ -338,6 +350,13 @@ Tips:
         <Text bold color="cyan">
           Alfred - Async Agent TUI
         </Text>
+        <Box marginLeft={2}>
+          <Text dimColor>[</Text>
+          <Text color="magenta" bold>
+            {executionMode}
+          </Text>
+          <Text dimColor>]</Text>
+        </Box>
         <Box flexGrow={1} />
         {totalTokens > 0 && (
           <Box marginRight={2}>
@@ -379,8 +398,8 @@ Tips:
             <Text color="yellow">⟳ Processing... (Press Escape to interrupt)</Text>
           ) : (
             <Text>
-              Press <Text color="cyan">Enter</Text> to send • <Text color="cyan">/help</Text> for
-              commands • <Text color="cyan">Escape</Text> to exit
+              <Text color="cyan">Tab</Text> mode • <Text color="cyan">Enter</Text> send •{' '}
+              <Text color="cyan">/help</Text> commands • <Text color="cyan">Esc</Text> exit
             </Text>
           )}
         </Text>
