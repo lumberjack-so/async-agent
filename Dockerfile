@@ -47,6 +47,9 @@ COPY --from=builder /app/dist ./dist/
 # Copy prompts directory (optional)
 COPY prompts ./prompts/
 
+# Copy scripts directory (for database seeding)
+COPY scripts ./scripts/
+
 # Copy entrypoint script and set permissions
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \

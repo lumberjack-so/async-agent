@@ -34,6 +34,8 @@ curl -X POST http://localhost:3001/webhook \
   -d '{"prompt": "What is 2+2?", "requestId": "test-1"}'
 ```
 
+**Default Skills**: On first run, the database is automatically seeded with example workflows (like "Christmas Present Finder"). See `scripts/` directory for available skills.
+
 **See [README.docker.md](README.docker.md) for complete Docker documentation.**
 
 ### 📦 Manual Setup
@@ -422,6 +424,41 @@ npx prisma generate
 ```
 
 See `README.prisma.md` for complete schema documentation.
+
+## Default Skills
+
+The system comes with pre-built skills that are automatically seeded on first installation:
+
+### Christmas Present Finder
+A 5-step workflow that researches a person and recommends the perfect Christmas present:
+1. Research person's profile via web search
+2. Analyze motivations and values
+3. Find top 5 gift options with purchase links
+4. Assume their persona to choose the best match
+5. Return final recommendation
+
+**Usage:**
+```bash
+curl -X POST http://localhost:3001/webhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Find the perfect Christmas present for Elon Musk",
+    "mode": "orchestrator"
+  }'
+```
+
+See `scripts/README-christmas-skill.md` for full documentation.
+
+### Adding Your Own Skills
+
+To add custom skills, insert them into the `skills` table:
+```bash
+# Via SQL
+docker-compose exec -T postgres psql -U asyncagent -d async_agent < scripts/your-skill.sql
+
+# Or create via API/Prisma Studio
+docker-compose exec app npx prisma studio
+```
 
 ## File Storage
 
