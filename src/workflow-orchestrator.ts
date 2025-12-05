@@ -7,7 +7,7 @@
 
 import fs from 'fs/promises';
 import { executeWorkflowAgent } from './workflow-agent.js';
-import { AgentResponse, Workflow, McpConnections, WorkflowAgentResponse } from './types.js';
+import { AgentResponse, Workflow, McpConnections, WorkflowAgentResponse, ExecutionStepMetadata } from './types.js';
 
 /**
  * Orchestrate multi-step workflow execution
@@ -135,11 +135,27 @@ Provide a clear, comprehensive answer that incorporates all the relevant data yo
     );
     console.log(`[Orchestrator] ========================================\n`);
 
-    // Return synthesis response
+    // Extract step metadata from traces
+    const stepMetadata: ExecutionStepMetadata[] = [];
+    let currentStepId = 1;
+
+    for (const message of allTraces) {
+      if (message.type === 'result') {
+        stepMetadata.push({
+          id: currentStepId++,
+          duration_ms: message.duration_ms || 0,
+          total_cost_usd: message.total_cost_usd || 0,
+          num_turns: message.num_turns || 0,
+        });
+      }
+    }
+
+    // Return synthesis response with metadata
     return {
       text: synthesisResult.text,
       workingDirectory: workingDirectory,
       trace: allTraces,
+      steps: stepMetadata,
     };
   } catch (error) {
     console.error(`[Orchestrator] Workflow failed:`, error);

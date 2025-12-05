@@ -40,6 +40,9 @@ export interface AgentResponse {
 
   /** Full conversation trace (all messages from the agent execution) */
   trace?: any[];
+
+  /** Execution step metadata (for workflows) */
+  steps?: ExecutionStepMetadata[];
 }
 
 /**
@@ -84,24 +87,34 @@ export interface WebhookRequestBody {
 }
 
 /**
+ * Execution step metadata
+ */
+export interface ExecutionStepMetadata {
+  id: number;
+  duration_ms: number;
+  total_cost_usd: number;
+  num_turns: number;
+}
+
+/**
  * Webhook response
  */
 export interface WebhookResponse {
-  /** The agent's response text */
+  /** The actual response text from the agent */
   response: string;
 
-  /** Files generated during execution */
-  files: FileMetadata[];
+  /** Array of file URLs generated */
+  url: string[];
 
   /** Request identifier */
-  requestId?: string;
+  requestId: string;
 
-  /** Classification result (present for classifier/orchestrator modes) */
-  classification?: ClassificationResult;
-
-  /** Workflow that was executed (if any) */
-  workflowId?: string;
-  workflow?: Workflow;
+  /** Execution metadata */
+  metadata?: {
+    workflowId?: string;
+    workflowName?: string;
+    steps?: ExecutionStepMetadata[];
+  };
 }
 
 /**

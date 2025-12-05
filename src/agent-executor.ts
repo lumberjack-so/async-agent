@@ -62,6 +62,9 @@ export interface ExecutionResult {
 
   /** Workflow that was executed (present if workflow was executed) */
   workflow?: Workflow;
+
+  /** Execution step metadata (for workflows) */
+  steps?: any[];
 }
 
 /**

@@ -168,6 +168,7 @@ async function processWebhook(
     let conversationTrace: any[] | undefined;
     let classification: any = undefined;
     let workflow: any = undefined;
+    let executionSteps: any[] | undefined;
 
     try {
       const result = await executeWithMode({
@@ -185,6 +186,7 @@ async function processWebhook(
       conversationTrace = result.trace;
       classification = result.classification;
       workflow = result.workflow;
+      executionSteps = result.steps;
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       logger.info(
@@ -269,22 +271,20 @@ async function processWebhook(
 
     metrics.recordRequest(true, Date.now() - startTime);
 
-    // Build response with classification and workflow info if applicable
+    // Build simplified response
     const response: WebhookResponse = {
       response: agentResponse,
-      files: uploadedFiles,
+      url: uploadedFiles.map(f => f.url),
       requestId,
     };
 
-    // Include classification result if present (classifier or orchestrator modes)
-    if (classification) {
-      response.classification = classification;
-    }
-
-    // Include workflow info if workflow was executed
-    if (workflow) {
-      response.workflowId = workflow.id;
-      response.workflow = workflow;
+    // Include metadata if workflow was executed
+    if (workflow || executionSteps) {
+      response.metadata = {
+        workflowId: workflow?.id,
+        workflowName: workflow?.name,
+        steps: executionSteps,
+      };
     }
 
     return response;
