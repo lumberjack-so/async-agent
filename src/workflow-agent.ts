@@ -78,6 +78,7 @@ export async function executeWorkflowAgent(
     console.log(`[WorkflowAgent] ========================================`);
 
     // Send SSE: Step starting details
+    console.log(`[WorkflowAgent] Sending step_detail: Starting step ${step.id}`);
     sendStreamUpdate(requestId, {
       type: 'step_detail',
       stepId: step.id,
@@ -86,6 +87,7 @@ export async function executeWorkflowAgent(
 
     // Send SSE: Tools available
     if (stepConnections.availableTools.length > 0) {
+      console.log(`[WorkflowAgent] Sending step_detail: Tools available: ${stepConnections.availableTools.join(', ')}`);
       sendStreamUpdate(requestId, {
         type: 'step_detail',
         stepId: step.id,
@@ -160,6 +162,7 @@ export async function executeWorkflowAgent(
               if (block.type === 'tool_use') {
                 console.log(`[WorkflowAgent]   Tool: ${block.name}`);
                 // Send SSE: Tool usage
+                console.log(`[WorkflowAgent] Sending step_detail: Using ${block.name} tool`);
                 sendStreamUpdate(requestId, {
                   type: 'step_detail',
                   stepId: step.id,

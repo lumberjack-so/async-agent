@@ -265,16 +265,19 @@ Tips:
               case 'step_detail':
                 // Add detail to current step's details array
                 const { stepId, detail } = data;
-                setWorkflowSteps((prev) =>
-                  prev.map((s) =>
+                console.log(`[TUI] step_detail event: stepId=${stepId}, detail=${detail}`);
+                setWorkflowSteps((prev) => {
+                  const updated = prev.map((s) =>
                     s.id === stepId
                       ? {
                           ...s,
                           details: [...(s.details || []), detail],
                         }
                       : s
-                  )
-                );
+                  );
+                  console.log('[TUI] Updated workflow steps:', updated.map(s => ({ id: s.id, status: s.status, detailsCount: s.details?.length || 0 })));
+                  return updated;
+                });
                 break;
 
               case 'complete':
