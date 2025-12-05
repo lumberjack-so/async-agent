@@ -2,11 +2,11 @@
  * Workflow Classifier
  *
  * Uses Claude to classify if a user prompt matches a known workflow.
- * Workflows are fetched from Supabase.
+ * Workflows are fetched from Prisma database.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { getAllWorkflows, getWorkflowById } from './database.js';
+import { getAllSkills, getSkillById } from './database.js';
 import { ClassificationResult, Workflow } from './types.js';
 
 const anthropic = new Anthropic({
@@ -26,11 +26,11 @@ export async function classifyWorkflow(
   userPrompt: string
 ): Promise<ClassificationResult> {
   try {
-    // Fetch available workflows from database
-    const workflows = await getAllWorkflows();
+    // Fetch available skills (workflows) from database
+    const skills = await getAllSkills();
 
-    if (workflows.length === 0) {
-      console.log('[Classifier] No workflows available in database');
+    if (skills.length === 0) {
+      console.log('[Classifier] No skills available in database');
       return {
         workflowId: null,
         workflowData: null,
@@ -39,8 +39,8 @@ export async function classifyWorkflow(
     }
 
     // Build classification prompt
-    const workflowList = workflows
-      .map((w) => `- ${w.name}: ${w.description}`)
+    const workflowList = skills
+      .map((s: any) => `- ${s.name}: ${s.description}`)
       .join('\n');
 
     const classificationPrompt = `You are a workflow classifier.
@@ -103,29 +103,29 @@ RULES:
       };
     }
 
-    // Find workflow by exact name match
-    const matchedWorkflow = workflows.find(
-      (w) => w.name.toLowerCase() === parsed.workflowName!.toLowerCase()
+    // Find skill by exact name match
+    const matchedSkill = skills.find(
+      (s: any) => s.name.toLowerCase() === parsed.workflowName!.toLowerCase()
     );
 
-    if (!matchedWorkflow) {
+    if (!matchedSkill) {
       console.warn(
-        `[Classifier] Workflow "${parsed.workflowName}" not found in database`
+        `[Classifier] Skill "${parsed.workflowName}" not found in database`
       );
       return {
         workflowId: null,
         workflowData: null,
         confidence: 'none',
-        reasoning: 'Suggested workflow not found in database',
+        reasoning: 'Suggested skill not found in database',
       };
     }
 
-    // Fetch full workflow data with steps
-    const workflowData = await getWorkflowById(matchedWorkflow.id);
+    // Fetch full skill data with steps
+    const workflowData = await getSkillById(matchedSkill.id);
 
     if (!workflowData) {
       console.warn(
-        `[Classifier] Failed to fetch workflow data for ${matchedWorkflow.id}`
+        `[Classifier] Failed to fetch skill data for ${matchedSkill.id}`
       );
       return {
         workflowId: null,
@@ -140,7 +140,7 @@ RULES:
 
     return {
       workflowId: workflowData.id,
-      workflowData,
+      workflowData: workflowData as any,  // Type cast for Prisma result
       confidence: parsed.confidence || 'medium',
       reasoning: parsed.reasoning,
     };

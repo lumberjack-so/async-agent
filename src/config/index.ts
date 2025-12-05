@@ -58,7 +58,7 @@ export const config = {
   // Agent configuration (one-off agent execution)
   agent: {
     apiKey: process.env.ANTHROPIC_API_KEY,
-    model: process.env.AGENT_MODEL || 'claude-sonnet-4-20250514',
+    model: process.env.AGENT_MODEL || 'claude-haiku-4-5',
     timeoutMs: parseIntEnv(process.env.AGENT_TIMEOUT_MS, 300000), // 5 minutes
     disallowedTools: parseStringArrayEnv(process.env.DISALLOWED_TOOLS),
   },
@@ -66,16 +66,14 @@ export const config = {
   // Workflow agent configuration (multi-step workflows)
   workflow: {
     agentModel:
-      process.env.WORKFLOW_AGENT_MODEL || 'claude-haiku-4-5-20251001',
+      process.env.WORKFLOW_AGENT_MODEL || 'claude-haiku-4-5',
     classifierModel:
-      process.env.CLASSIFIER_MODEL || 'claude-haiku-4-5-20251001',
+      process.env.CLASSIFIER_MODEL || 'claude-haiku-4-5',
   },
 
-  // Supabase configuration
-  supabase: {
-    url: process.env.SUPABASE_URL,
-    serviceKey: process.env.SUPABASE_SERVICE_KEY,
-    storageBucket: process.env.SUPABASE_STORAGE_BUCKET || 'agent-files',
+  // Database configuration
+  database: {
+    url: process.env.DATABASE_URL,
   },
 
   // File handling
@@ -124,19 +122,13 @@ export function validateConfig(): ValidationResult {
     );
   }
 
+  if (!config.database.url) {
+    errors.push(
+      'DATABASE_URL is not set - database operations will fail'
+    );
+  }
+
   // Warnings for optional but recommended fields
-  if (!config.supabase.url) {
-    warnings.push(
-      'SUPABASE_URL is not set - database operations will be disabled'
-    );
-  }
-
-  if (!config.supabase.serviceKey) {
-    warnings.push(
-      'SUPABASE_SERVICE_KEY is not set - database operations will be disabled'
-    );
-  }
-
   if (Object.keys(config.mcp.connections).length === 0) {
     warnings.push(
       'MCP_CONNECTIONS is not set - agent will have no tools available'
@@ -216,14 +208,10 @@ export function logConfigValidation(): void {
   console.log(`[Config]   - Agent Model: ${config.workflow.agentModel}`);
   console.log(`[Config]   - Classifier Model: ${config.workflow.classifierModel}`);
 
-  console.log('[Config] Supabase configuration:');
+  console.log('[Config] Database configuration:');
   console.log(
-    `[Config]   - URL: ${config.supabase.url ? 'SET' : 'NOT SET'}`
+    `[Config]   - URL: ${config.database.url ? 'SET' : 'NOT SET'}`
   );
-  console.log(
-    `[Config]   - Service Key: ${config.supabase.serviceKey ? 'SET' : 'NOT SET'}`
-  );
-  console.log(`[Config]   - Storage Bucket: ${config.supabase.storageBucket}`);
 
   console.log('[Config] File configuration:');
   console.log(`[Config]   - Max Size: ${config.files.maxSizeMb}MB`);
@@ -287,7 +275,7 @@ export function getConfig(path: string): any {
  */
 export const featureFlags = {
   hasDatabase: (): boolean => {
-    return !!(config.supabase.url && config.supabase.serviceKey);
+    return !!config.database.url;
   },
 
   hasAgent: (): boolean => {

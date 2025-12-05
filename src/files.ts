@@ -1,17 +1,16 @@
 /**
  * File Operations Module
  *
- * Handles file detection and upload to Supabase Storage.
+ * Handles file detection and local storage.
  */
 
 import fs from 'fs/promises';
 import path from 'path';
 import { FileMetadata } from './types.js';
-import { getSupabaseClient, isSupabaseConfigured } from './shared/supabase.js';
 
-const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'agent-files';
 const MAX_FILE_SIZE_MB = parseInt(process.env.MAX_FILE_SIZE_MB || '50', 10);
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const STORAGE_ROOT = process.env.LOCAL_STORAGE_PATH || './storage/files';
 
 export interface DetectedFile {
   localPath: string;
@@ -62,51 +61,37 @@ export async function detectFiles(workingDirectory: string): Promise<DetectedFil
 }
 
 /**
- * Upload file to Supabase Storage
+ * Upload file to local storage
  */
 export async function uploadFile(
   file: DetectedFile,
   requestId: string | null | undefined
 ): Promise<FileMetadata | null> {
-  if (!isSupabaseConfigured()) {
-    console.warn('[Files] Supabase not configured - skipping upload');
-    return null;
-  }
-
   try {
     const timestamp = Date.now();
     const identifier = requestId || `req-${timestamp}`;
-    const storagePath = `${identifier}/${timestamp}-${file.filename}`;
+    const storagePath = path.join(STORAGE_ROOT, identifier);
 
-    const fileBuffer = await fs.readFile(file.localPath);
+    // Create directory if it doesn't exist
+    await fs.mkdir(storagePath, { recursive: true });
 
-    console.log(`[Files] Uploading ${file.filename} to ${STORAGE_BUCKET}/${storagePath}`);
+    const destPath = path.join(storagePath, `${timestamp}-${file.filename}`);
 
-    const supabase = getSupabaseClient();
-    const { data, error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(storagePath, fileBuffer, {
-        contentType: 'application/octet-stream',
-        upsert: false,
-      });
+    // Copy file to persistent storage
+    await fs.copyFile(file.localPath, destPath);
 
-    if (error) {
-      console.error(`[Files] Upload error for ${file.filename}:`, error);
-      return null;
-    }
+    // Generate URL (will be served by the app)
+    const baseUrl = process.env.FILE_STORAGE_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
+    const fileUrl = `${baseUrl}/files/${identifier}/${timestamp}-${file.filename}`;
 
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath);
-
-    console.log(`[Files] Uploaded ${file.filename} -> ${publicUrl}`);
+    console.log(`[Files] Stored: ${file.filename} -> ${fileUrl}`);
 
     return {
       name: file.filename,
-      url: publicUrl,
+      url: fileUrl,
     };
   } catch (error) {
-    console.error(`[Files] Unexpected upload error:`, error);
+    console.error(`[Files] Storage error:`, error);
     return null;
   }
 }

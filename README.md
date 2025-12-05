@@ -7,11 +7,36 @@ A generic async agent server using Claude Agent SDK with dynamic MCP connections
 - **Claude Agent SDK Integration**: Execute prompts with full agent capabilities
 - **Dynamic MCP Connections**: MCP server configurations are provided per-request via middleware
 - **Async Execution**: Support for both synchronous and asynchronous request processing
-- **File Handling**: Automatic detection and upload of generated files to Supabase Storage
-- **Result Persistence**: Store agent results in Supabase for later retrieval
+- **Local File Storage**: Automatic detection and storage of generated files
+- **Prisma Database**: PostgreSQL database with encrypted credentials and execution history
 - **Production Ready**: Rate limiting, security headers, error handling, logging, metrics
+- **Docker Support**: One-command containerized deployment with PostgreSQL
 
 ## Quick Start
+
+### 🐳 Docker (Recommended)
+
+The easiest way to get started:
+
+```bash
+# Copy Docker environment template
+cp .env.docker.example .env
+
+# Edit .env and set your ANTHROPIC_API_KEY
+nano .env
+
+# Start everything (app + PostgreSQL)
+docker-compose up -d
+
+# Test it
+curl -X POST http://localhost:3001/webhook \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "What is 2+2?", "requestId": "test-1"}'
+```
+
+**See [README.docker.md](README.docker.md) for complete Docker documentation.**
+
+### 📦 Manual Setup
 
 ```bash
 # Install dependencies
@@ -21,7 +46,11 @@ npm install
 cp .env.example .env
 
 # Edit .env with your configuration
-# At minimum, set ANTHROPIC_API_KEY
+# At minimum, set ANTHROPIC_API_KEY and DATABASE_URL
+
+# Setup database
+npx prisma migrate deploy
+npx prisma generate
 
 # Run in development mode
 npm run dev
@@ -77,10 +106,9 @@ Server metrics endpoint.
 | `DATABASE_URL` | Yes | - | PostgreSQL connection string |
 | `ANTHROPIC_API_KEY` | Yes | - | Anthropic API key |
 | `PORT` | No | 3001 | Server port |
-| `AGENT_MODEL` | No | claude-sonnet-4-20250514 | Claude model to use |
+| `AGENT_MODEL` | No | claude-haiku-4-5 | Claude model to use |
 | `AGENT_TIMEOUT_MS` | No | 300000 | Agent execution timeout (ms) |
-| `SUPABASE_URL` | No | - | Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | No | - | Supabase service key |
+| `LOCAL_STORAGE_PATH` | No | ./storage/files | Local file storage directory |
 | `MCP_CONNECTIONS` | No | {} | JSON-encoded MCP server configurations |
 
 See `.env.example` for all options.
@@ -280,8 +308,8 @@ async-agent/
 │   ├── agent.ts              # Claude Agent SDK integration
 │   ├── types.ts              # TypeScript types
 │   ├── validation.ts         # Request validation (Zod)
-│   ├── database.ts           # Supabase database operations
-│   ├── files.ts              # File detection and upload
+│   ├── database.ts           # Prisma database operations
+│   ├── files.ts              # File detection and local storage
 │   ├── prompts.ts            # Prompt loading
 │   ├── middleware/
 │   │   ├── connections.ts    # MCP connections middleware
@@ -318,27 +346,29 @@ npm start
 
 ## Database Schema
 
-If using Supabase for result persistence, create this table:
+The Prisma schema is located at `prisma/schema.prisma` and includes:
 
-```sql
-CREATE TABLE results (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  request_id TEXT NOT NULL,
-  text TEXT NOT NULL,
-  files JSONB DEFAULT '[]',
-  metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+- **Connection** - MCP connections with encrypted credentials
+- **Skill** - User workflows with steps and trigger configuration
+- **Execution** - Full execution history with traces
+- **Config** - Encrypted key-value store for VM secrets
 
-CREATE INDEX idx_results_request_id ON results(request_id);
+Apply migrations with:
+```bash
+npx prisma migrate deploy
+npx prisma generate
 ```
 
-## Storage Bucket
+See `README.prisma.md` for complete schema documentation.
 
-If using Supabase Storage for file uploads:
+## File Storage
 
-1. Create a bucket named `agent-files` (or set `SUPABASE_STORAGE_BUCKET`)
-2. Configure public access if you want files to be publicly accessible
+Generated files are stored locally in `/app/storage/files` (Docker) or `./storage/files` (local).
+
+Files are accessible via HTTP at:
+```
+http://localhost:3001/files/{requestId}/{timestamp}-{filename}
+```
 
 ## License
 

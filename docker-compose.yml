@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: async-agent-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: asyncagent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      POSTGRES_DB: async_agent
+      # Performance tuning for single-user workload
+      POSTGRES_MAX_CONNECTIONS: 20
+      POSTGRES_SHARED_BUFFERS: 128MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 512MB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asyncagent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - async-agent-network
+
+  # Async Agent Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: async-agent-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://asyncagent:${POSTGRES_PASSWORD:-changeme123}@postgres:5432/async_agent?schema=public&connection_limit=5
+
+      # Required: Anthropic API Key (set in .env file)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+
+      # Server Configuration
+      PORT: 3001
+      NODE_ENV: production
+
+      # Agent Configuration
+      AGENT_MODEL: ${AGENT_MODEL:-claude-haiku-4-5}
+      AGENT_TIMEOUT_MS: ${AGENT_TIMEOUT_MS:-300000}
+
+      # Workflow Configuration
+      WORKFLOW_AGENT_MODEL: ${WORKFLOW_AGENT_MODEL:-claude-haiku-4-5}
+      CLASSIFIER_MODEL: ${CLASSIFIER_MODEL:-claude-haiku-4-5}
+
+      # Request Configuration
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-360000}
+
+      # Rate Limiting
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-60}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+
+      # CORS Configuration
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+
+      # Local File Storage (Supabase disabled)
+      LOCAL_STORAGE_PATH: /app/storage/files
+      FILE_STORAGE_BASE_URL: ${FILE_STORAGE_BASE_URL:-http://localhost:3001}
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-50}
+
+      # MCP Connections (JSON format)
+      MCP_CONNECTIONS: ${MCP_CONNECTIONS:-{}}
+    volumes:
+      # Persistent storage for uploaded files
+      - file_storage:/app/storage/files
+      # Optional: Mount prompts directory for easy editing
+      - ./prompts:/app/prompts:ro
+    ports:
+      - "${PORT:-3001}:3001"
+    networks:
+      - async-agent-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  file_storage:
+    driver: local
+
+networks:
+  async-agent-network:
+    driver: bridge

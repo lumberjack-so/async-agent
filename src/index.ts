@@ -62,6 +62,10 @@ app.use(createEnvConnectionsMiddleware());
 app.post('/webhook', asyncHandler(webhookHandler));
 app.post('/webhooks/prompt', asyncHandler(webhookHandler)); // Alias
 
+// Serve uploaded files (when using local storage)
+const storageRoot = process.env.LOCAL_STORAGE_PATH || './storage/files';
+app.use('/files', express.static(storageRoot));
+
 // Health check endpoint
 app.get(
   '/health',

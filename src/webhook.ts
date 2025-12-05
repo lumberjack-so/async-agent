@@ -13,7 +13,6 @@ import {
   uploadAllFiles,
   cleanupWorkingDirectory,
 } from './files.js';
-import { upsertResult } from './database.js';
 import { AgentError, ValidationError } from './utils/errors.js';
 import { logger, getCorrelationId } from './middleware/logging.js';
 import { metrics } from './utils/monitoring.js';
@@ -300,24 +299,8 @@ async function processWebhook(
       );
     }
 
-    // Store result in database
-    logger.info(correlationId, 'database', 'Storing result');
-
-    try {
-      await upsertResult({
-        requestId,
-        text: agentResponse,
-        files: uploadedFiles,
-        metadata,
-      });
-      logger.info(correlationId, 'database', 'Result stored successfully');
-    } catch (error: any) {
-      // Database failure is non-fatal
-      logger.error(correlationId, 'database', 'Database upsert error (non-fatal)', {
-        error: error.message,
-      });
-      metrics.recordError('DatabaseError');
-    }
+    // Note: Result storage removed - using Prisma for skills/executions only
+    // Files are stored locally and traces are returned in the response
 
     // Cleanup working directory
     if (workingDirectory) {

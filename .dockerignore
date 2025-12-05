@@ -1,0 +1,50 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Build outputs
+dist
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.docker.example
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Tests
+tests
+*.test.ts
+coverage
+jest.config.cjs
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Storage (don't copy local storage to image)
+storage
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.log
