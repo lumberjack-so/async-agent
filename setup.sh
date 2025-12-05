@@ -24,9 +24,11 @@ echo "1️⃣  Configuring environment..."
 # Add DATABASE_URL to .env if not present (needed for CLI)
 if ! grep -q "^DATABASE_URL=" .env; then
     echo "Adding DATABASE_URL to .env for CLI access..."
+    # Read POSTGRES_PASSWORD from .env or use default
+    POSTGRES_PASSWORD=$(grep "^POSTGRES_PASSWORD=" .env | cut -d '=' -f2 || echo "changeme123")
     echo "" >> .env
     echo "# Database URL for CLI (connects to Docker PostgreSQL on localhost:5432)" >> .env
-    echo 'DATABASE_URL=postgresql://asyncagent:${POSTGRES_PASSWORD:-changeme123}@localhost:5432/async_agent?schema=public&connection_limit=5' >> .env
+    echo "DATABASE_URL=postgresql://asyncagent:${POSTGRES_PASSWORD}@localhost:5432/async_agent?schema=public&connection_limit=5" >> .env
 fi
 
 echo ""
