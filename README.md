@@ -14,24 +14,45 @@ A generic async agent server using Claude Agent SDK with dynamic MCP connections
 
 ## Quick Start
 
-### 🐳 Docker (Recommended)
+### 🚀 One-Command Setup (Recommended)
 
-The easiest way to get started:
+Get everything running with a single command:
 
 ```bash
-# Copy Docker environment template
+# 1. Copy environment template
 cp .env.docker.example .env
 
-# Edit .env and set your ANTHROPIC_API_KEY
+# 2. Edit .env and set your ANTHROPIC_API_KEY
 nano .env
 
-# Start everything (app + PostgreSQL)
-docker-compose up -d
+# 3. Run setup script (starts Docker + installs CLI)
+./setup.sh
+```
 
-# Test it
-curl -X POST http://localhost:3001/webhook \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "What is 2+2?", "requestId": "test-1"}'
+That's it! The setup script will:
+- ✅ Start Docker services (PostgreSQL + Async Agent)
+- ✅ Install dependencies
+- ✅ Build and link the Alfred CLI globally
+
+Now you can use the CLI:
+
+```bash
+alfred --help
+alfred health
+alfred skills list
+```
+
+**Alternative: Step-by-step setup**
+
+```bash
+# Start Docker services
+docker-compose up -d --build
+
+# Install and link CLI
+npm run setup:cli
+
+# Or do everything at once with npm
+npm run setup
 ```
 
 **Default Skills**: On first run, the database is automatically seeded with example workflows (like "Christmas Present Finder"). See `scripts/` directory for available skills.
@@ -44,20 +65,24 @@ Alfred is a command-line interface for managing your async agent system. It prov
 
 ### Installation
 
-The CLI is built into the project and uses the same database as the async-agent server.
+**If you ran `./setup.sh`, the CLI is already installed!** Just use `alfred --help`.
+
+**Manual installation:**
 
 ```bash
-# Build the project (includes CLI)
+# Option 1: Automatic (installs with npm install)
+npm install  # postinstall script builds CLI automatically
+npm link     # Makes 'alfred' command available globally
+
+# Option 2: Use the setup script
+npm run setup:cli
+
+# Option 3: Step by step
 npm run build
-
-# The CLI is now available as 'alfred' command via npm
-# You can run it directly:
-node dist/cli/index.js --help
-
-# Or install globally:
 npm link
-alfred --help
 ```
+
+The CLI is built into the project and uses the same database as the async-agent server.
 
 ### CLI Commands
 
