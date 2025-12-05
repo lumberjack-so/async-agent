@@ -72,7 +72,11 @@ export async function webhookHandler(req: Request, res: Response) {
         'webhook',
         'Async mode enabled - responding immediately'
       );
-      res.status(202).json({ status: 'processing', requestId });
+      res.status(202).json({
+        status: 'processing',
+        requestId,
+        executionId: requestId  // Use requestId as executionId for SSE streaming
+      });
 
       // Continue execution in background
       processWebhookAsync(
@@ -276,6 +280,7 @@ async function processWebhook(
       response: agentResponse,
       url: uploadedFiles.map(f => f.url),
       requestId,
+      executionId: requestId, // Use requestId as executionId for SSE streaming
     };
 
     // Include metadata if workflow was executed

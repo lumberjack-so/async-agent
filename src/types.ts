@@ -109,6 +109,9 @@ export interface WebhookResponse {
   /** Request identifier */
   requestId: string;
 
+  /** Execution ID for SSE streaming */
+  executionId?: string;
+
   /** Execution metadata */
   metadata?: {
     workflowId?: string;
