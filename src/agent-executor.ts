@@ -128,7 +128,6 @@ export async function executeWithMode(options: ExecuteOptions): Promise<Executio
           classification.workflowData,
           prompt,
           requestId,
-          mcpConnections,
           systemPrompt
         );
 

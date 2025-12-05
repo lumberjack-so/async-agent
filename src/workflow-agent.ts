@@ -6,24 +6,26 @@
  */
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
-import { WorkflowStep, McpConnections, WorkflowAgentResponse } from './types.js';
+import { WorkflowStep, Workflow, WorkflowAgentResponse } from './types.js';
 import { loadSystemPrompt } from './prompts.js';
 import { config } from './config/index.js';
 import { extractResponseText, parseDisallowedTools } from './shared/agent-utils.js';
 import type { SDKMessage, SDKSystemInitMessage } from './shared/sdk-types.js';
+import { resolveStepConnections, isSDKBuiltinTool } from './connection-resolver.js';
 
 // Parse global disallowed tools from environment
 const GLOBAL_DISALLOWED_TOOLS = parseDisallowedTools();
 
 export interface ExecuteWorkflowAgentOptions {
   step: WorkflowStep;
+  skill: Workflow;  // Parent workflow for connection fallback
   userPrompt: string;
   requestId: string;
   workingDirectory: string;
-  mcpConnections: McpConnections;
   sessionId: string | null;
   forkSession: boolean;
   systemPrompt?: string;
+  // mcpConnections removed - resolved per-step now
 }
 
 /**
@@ -34,16 +36,19 @@ export async function executeWorkflowAgent(
 ): Promise<WorkflowAgentResponse> {
   const {
     step,
+    skill,
     userPrompt,
     requestId,
     workingDirectory,
-    mcpConnections,
     sessionId,
     forkSession,
     systemPrompt,
   } = options;
 
   try {
+    // Resolve per-step connections from database
+    const stepConnections = await resolveStepConnections(step, skill);
+
     // Build step-specific system prompt
     const baseSystemPrompt = systemPrompt || (await loadSystemPrompt());
     const stepSystemPrompt = buildStepSystemPrompt(baseSystemPrompt, step);
@@ -51,8 +56,8 @@ export async function executeWorkflowAgent(
     // Construct step prompt
     const stepUserPrompt = constructStepPrompt(userPrompt, step);
 
-    // Build tool restrictions
-    const { disallowedTools } = buildToolRestrictions(step, mcpConnections);
+    // Build tool restrictions (SDK tools only - MCP tools already filtered by resolver)
+    const { disallowedTools } = buildToolRestrictions(step, stepConnections.availableTools);
 
     console.log(`[WorkflowAgent] ========================================`);
     console.log(`[WorkflowAgent] Executing step ${step.id}`);
@@ -61,7 +66,10 @@ export async function executeWorkflowAgent(
     console.log(`[WorkflowAgent] Session ID: ${sessionId || 'NEW'}`);
     console.log(`[WorkflowAgent] Working directory: ${workingDirectory}`);
     console.log(
-      `[WorkflowAgent] MCP servers: ${Object.keys(mcpConnections).join(', ') || 'none'}`
+      `[WorkflowAgent] Connections: ${stepConnections.connectionNames.join(', ') || 'none'}`
+    );
+    console.log(
+      `[WorkflowAgent] Available tools: ${stepConnections.availableTools.length} total`
     );
     console.log(
       `[WorkflowAgent] Disallowed tools count: ${disallowedTools ? disallowedTools.length : 0}`
@@ -72,7 +80,7 @@ export async function executeWorkflowAgent(
     const queryOptions: any = {
       model: config.agent.model,
       systemPrompt: stepSystemPrompt,
-      mcpServers: mcpConnections,
+      mcpServers: stepConnections.mcpConnections,  // Per-step connections
       cwd: workingDirectory,
       permissionMode: 'bypassPermissions',
     };
@@ -263,22 +271,17 @@ const SDK_BUILTIN_TOOLS = [
 /**
  * Build tool restrictions for this step
  *
+ * NOTE: MCP tools are already filtered by the connection resolver.
+ * This function only handles SDK built-in tool restrictions.
+ *
  * Uses disallowedTools approach (inverse of allowedTools)
  */
 function buildToolRestrictions(
   step: WorkflowStep,
-  mcpConnections: McpConnections
+  availableTools: string[]
 ): {
   disallowedTools: string[] | undefined;
 } {
-  // Build list of all MCP tools from connections
-  const mcpTools: string[] = [];
-  for (const serverName of Object.keys(mcpConnections)) {
-    // We don't know the exact tools without connecting, so we can't
-    // build a complete disallowed list. For now, if allowedTools is
-    // specified, we'll just trust the step config.
-  }
-
   // If no allowedTools specified, allow everything
   if (!step.allowedTools) {
     // Just apply global disallowed tools
@@ -295,9 +298,12 @@ function buildToolRestrictions(
     };
   }
 
-  // Calculate disallowed = all SDK tools - allowed tools
+  // Filter allowedTools to only SDK tools (MCP tools already filtered by resolver)
+  const allowedSDKTools = step.allowedTools.filter((tool) => isSDKBuiltinTool(tool));
+
+  // Calculate disallowed = all SDK tools - allowed SDK tools
   const disallowedTools = SDK_BUILTIN_TOOLS.filter(
-    (tool) => !step.allowedTools!.includes(tool)
+    (tool) => !allowedSDKTools.includes(tool)
   );
 
   // Add global disallowed tools

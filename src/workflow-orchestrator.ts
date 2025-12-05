@@ -12,10 +12,12 @@ import { AgentResponse, Workflow, McpConnections, WorkflowAgentResponse, Executi
 /**
  * Orchestrate multi-step workflow execution
  *
+ * NOTE: MCP connections are now resolved per-step from the database,
+ * not passed in from the HTTP request level.
+ *
  * @param workflow - Complete workflow with all steps
  * @param userPrompt - Original user prompt
  * @param requestId - Unique request identifier
- * @param mcpConnections - MCP server connections to use
  * @param systemPrompt - Optional system prompt override
  * @returns Combined agent response from all steps
  */
@@ -23,7 +25,6 @@ export async function executeWorkflowOrchestrator(
   workflow: Workflow,
   userPrompt: string,
   requestId: string,
-  mcpConnections: McpConnections,
   systemPrompt?: string
 ): Promise<AgentResponse> {
   const timestamp = Date.now();
@@ -61,13 +62,14 @@ export async function executeWorkflowOrchestrator(
       // Execute step
       const stepResult: WorkflowAgentResponse = await executeWorkflowAgent({
         step,
+        skill: workflow,  // Pass full workflow for connection resolution
         userPrompt,
         requestId,
         workingDirectory,
-        mcpConnections,
         sessionId,
         forkSession: !isFirstStep,
         systemPrompt,
+        // mcpConnections removed - resolved per-step now
       });
 
       console.log(`[Orchestrator]    Received sessionId: ${stepResult.sessionId}`);
@@ -113,13 +115,14 @@ Provide a clear, comprehensive answer that incorporates all the relevant data yo
 
     const synthesisResult: WorkflowAgentResponse = await executeWorkflowAgent({
       step: synthesisStep,
+      skill: workflow,  // Pass full workflow for connection resolution
       userPrompt,
       requestId,
       workingDirectory,
-      mcpConnections,
       sessionId,
       forkSession: true,
       systemPrompt,
+      // mcpConnections removed - resolved per-step now
     });
 
     console.log(`[Orchestrator]    Synthesis complete`);

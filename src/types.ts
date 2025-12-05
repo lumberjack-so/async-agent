@@ -125,6 +125,7 @@ export interface Workflow {
   name: string;
   description: string;
   steps: WorkflowStep[];
+  connectionNames?: string[];  // Skill-level connection names (fallback for steps)
   created_at?: string;
 }
 
@@ -135,8 +136,9 @@ export interface WorkflowStep {
   id: number;
   prompt: string;
   guidance?: string;
-  allowedTools?: string[];
-  disallowedTools?: string[];
+  allowedTools?: string[];      // SDK tools, MCP tool names, MCP server names
+  disallowedTools?: string[];   // SDK tools, MCP tool names, MCP server names
+  connectionNames?: string[];   // Per-step connection names (fallback to skill-level)
 }
 
 /**
@@ -154,6 +156,26 @@ export interface ClassificationResult {
  */
 export interface WorkflowAgentResponse extends AgentResponse {
   sessionId: string;
+}
+
+/**
+ * Resolved MCP connection configuration from database
+ */
+export interface ResolvedConnection {
+  name: string;
+  command: string;
+  args: string[];
+  env?: Record<string, string>;
+  tools: string[];  // Available tool names from this connection
+}
+
+/**
+ * Connection resolution result for a workflow step
+ */
+export interface StepConnections {
+  mcpConnections: McpConnections;      // For Claude SDK
+  availableTools: string[];            // All tool names from connections
+  connectionNames: string[];           // Resolved connection names used
 }
 
 // Extend Express Request to include MCP connections
