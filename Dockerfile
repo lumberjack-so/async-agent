@@ -47,9 +47,10 @@ COPY --from=builder /app/dist ./dist/
 # Copy prompts directory (optional)
 COPY prompts ./prompts/
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Copy entrypoint script and set permissions
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chown node:node /usr/local/bin/docker-entrypoint.sh
 
 # Create storage directory for local file uploads
 RUN mkdir -p /app/storage/files && chown -R node:node /app/storage
@@ -70,5 +71,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
 # Use entrypoint script
-ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["npm", "start"]
