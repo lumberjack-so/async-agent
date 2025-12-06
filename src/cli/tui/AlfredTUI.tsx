@@ -13,6 +13,11 @@ import { SkillsMenu } from './SkillsMenu.js';
 import { ExecutionHistory } from './ExecutionHistory.js';
 import { TokenUsageDisplay } from './TokenUsageDisplay.js';
 import { WorkflowProgress, WorkflowStep } from './WorkflowProgress.js';
+import { Header } from './Header.js';
+import { StatusBar } from './StatusBar.js';
+import { SuccessCard } from './SuccessCard.js';
+import { ErrorCard, getErrorSuggestion } from './ErrorCard.js';
+import { brand } from './theme.js';
 
 type AppMode = 'chat' | 'skills' | 'streaming' | 'history';
 type ExecutionMode = 'orchestrator' | 'classifier' | 'default';
@@ -42,7 +47,7 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
     {
       id: '1',
       type: 'system',
-      content: 'Welcome to Alfred! Type your prompt or use /commands for special functions.',
+      content: `Welcome to ${brand.name}! ${brand.tagline}\nType your prompt or use /commands for special functions.`,
       timestamp: new Date(),
     },
   ]);
@@ -226,7 +231,7 @@ Tips:
               case 'connected':
                 addMessage({
                   type: 'assistant',
-                  content: '⟳ Connected to alfred...',
+                  content: '⟳ Connected to Alfred...',
                 });
                 break;
 
@@ -297,13 +302,20 @@ Tips:
                   setTotalCost((prev) => prev + data.metadata.cost);
                 }
 
+                // Add success card as a message (will be rendered by MessageHistory)
                 addMessage({
                   type: 'assistant',
-                  content: data.output || 'Task completed',
+                  content: `SUCCESS:${JSON.stringify({
+                    result: data.output || 'Task completed',
+                    duration: data.metadata?.duration,
+                    cost: data.metadata?.cost,
+                    metadata: data.metadata,
+                  })}`,
                   metadata: {
                     requestId: executionId,
                     cost: data.metadata?.cost,
                     duration: data.metadata?.duration,
+                    workflow: data.metadata?.workflow,
                   },
                 });
                 break;
@@ -317,9 +329,17 @@ Tips:
                 setWorkflowName(null);
                 setWorkflowSteps([]);
 
+                // Create error object and get suggestion
+                const error = new Error(data.message || 'Unknown error');
+                const suggestion = getErrorSuggestion(error);
+
+                // Add error card as a message (will be rendered by MessageHistory)
                 addMessage({
                   type: 'system',
-                  content: `✗ Error: ${data.message || 'Unknown error'}`,
+                  content: `ERROR:${JSON.stringify({
+                    message: error.message,
+                    suggestion,
+                  })}`,
                 });
                 break;
             }
@@ -404,35 +424,7 @@ Tips:
   return (
     <Box flexDirection="column" height="100%">
       {/* Header */}
-      <Box
-        borderStyle="round"
-        borderColor="cyan"
-        paddingX={2}
-        paddingY={0}
-        marginBottom={1}
-      >
-        <Text bold color="cyan">
-          Alfred - Async Agent TUI
-        </Text>
-        <Box marginLeft={2}>
-          <Text dimColor>[</Text>
-          <Text color="magenta" bold>
-            {executionMode}
-          </Text>
-          <Text dimColor>]</Text>
-        </Box>
-        <Box flexGrow={1} />
-        {totalTokens > 0 && (
-          <Box marginRight={2}>
-            <TokenUsageDisplay
-              tokenCount={totalTokens}
-              cost={totalCost}
-              model="claude-haiku-4-5"
-            />
-          </Box>
-        )}
-        <Text dimColor>v1.0.0</Text>
-      </Box>
+      <Header mode={executionMode} version={brand.version} />
 
       {/* Message History */}
       <Box flexDirection="column" flexGrow={1} marginBottom={1}>
@@ -467,16 +459,7 @@ Tips:
 
       {/* Status Bar */}
       <Box marginTop={1}>
-        <Text dimColor>
-          {isStreaming ? (
-            <Text color="yellow">⟳ Processing... (Press Escape to interrupt)</Text>
-          ) : (
-            <Text>
-              <Text color="cyan">Tab</Text> mode • <Text color="cyan">Enter</Text> send •{' '}
-              <Text color="cyan">/help</Text> commands • <Text color="cyan">Esc</Text> exit
-            </Text>
-          )}
-        </Text>
+        <StatusBar isStreaming={isStreaming} mode={mode} canInterrupt={isStreaming} />
       </Box>
     </Box>
   );
