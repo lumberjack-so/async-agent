@@ -337,12 +337,11 @@ Tips:
                 break;
             }
           } catch (err) {
-            console.error('Failed to parse SSE message:', err);
+            // Silently ignore parse errors
           }
         };
 
         eventSource.onerror = (error: any) => {
-          console.error('SSE error:', error);
           eventSource.close();
           setIsStreaming(false);
           setStreamingRequestId(null);
@@ -358,7 +357,6 @@ Tips:
           mode: executionMode,
           requestId: requestId,
         }).catch((error) => {
-          console.error('Webhook error:', error);
           eventSource.close();
           setIsStreaming(false);
           addMessage({

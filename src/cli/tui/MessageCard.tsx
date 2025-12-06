@@ -71,7 +71,6 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, index }) => {
       return <SuccessCard {...cardData} />;
     } catch (e) {
       // Fallback to regular rendering if parsing fails
-      console.error('Failed to parse SUCCESS card:', e);
     }
   }
 
@@ -82,7 +81,6 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, index }) => {
       return <ErrorCard error={error} suggestion={cardData.suggestion} />;
     } catch (e) {
       // Fallback to regular rendering if parsing fails
-      console.error('Failed to parse ERROR card:', e);
     }
   }
 
