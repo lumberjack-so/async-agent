@@ -229,10 +229,7 @@ Tips:
 
             switch (data.type) {
               case 'connected':
-                addMessage({
-                  type: 'assistant',
-                  content: '⟳ Connected to Alfred...',
-                });
+                // Connection established - no message needed
                 break;
 
               case 'commentary':
