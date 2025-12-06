@@ -31,11 +31,6 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({
   cost,
   metadata,
 }) => {
-  // Truncate result to first 200 characters
-  const resultPreview = result.length > 200
-    ? `${result.substring(0, 200)}...`
-    : result;
-
   return (
     <Box
       flexDirection="column"
@@ -50,9 +45,9 @@ export const SuccessCard: React.FC<SuccessCardProps> = ({
         <Text bold>✨ Task Complete! ✨</Text>
       </Gradient>
 
-      {/* Result preview */}
+      {/* Full result */}
       <Box marginTop={1} marginBottom={1}>
-        <Text>{resultPreview}</Text>
+        <Text>{result}</Text>
       </Box>
 
       {/* Metadata badges */}
