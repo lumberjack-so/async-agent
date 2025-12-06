@@ -39,28 +39,67 @@ export async function addConnectionCommand(toolkitName: string) {
       toolkitName: toolkit.name,
     });
 
+    if (!authFlow.connectionId) {
+      console.error(chalk.red('✗ Failed to initiate connection'));
+      process.exit(1);
+    }
+
     if (authFlow.type === 'oauth' && authFlow.authUrl) {
       console.log(chalk.yellow('\n📎 Open this URL to authenticate:'));
       console.log(chalk.blue(authFlow.authUrl));
       console.log(chalk.gray('\nWaiting for authentication to complete...'));
-      console.log(chalk.gray('(Authentication flow handling will be improved in TUI)'));
+      console.log(chalk.gray('Press Ctrl+C to cancel\n'));
+
+      // Poll for completion (max 5 minutes)
+      const maxAttempts = 60; // 5 minutes with 5-second intervals
+      let attempts = 0;
+      let authComplete = false;
+
+      while (attempts < maxAttempts && !authComplete) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        attempts++;
+
+        try {
+          const status = await client.checkConnectionStatus(authFlow.connectionId);
+
+          if (status === 'active') {
+            authComplete = true;
+            console.log(chalk.green('✓ Authentication successful!'));
+          } else if (status === 'failed') {
+            console.error(chalk.red('✗ Authentication failed'));
+            process.exit(1);
+          }
+
+          // Show progress dots
+          process.stdout.write(chalk.gray('.'));
+        } catch (error) {
+          // Connection might not exist yet, keep polling
+          process.stdout.write(chalk.gray('.'));
+        }
+      }
+
+      if (!authComplete) {
+        console.error(chalk.red('\n✗ Authentication timed out after 5 minutes'));
+        console.log(chalk.yellow('Please try again or check your Composio dashboard'));
+        process.exit(1);
+      }
     }
 
     // Get tools for this toolkit
+    console.log(chalk.gray('\nFetching available tools...'));
     const tools = await client.getToolkitTools(toolkit.name);
 
     // Save to database
-    if (authFlow.connectionId) {
-      await db.createComposioConnection({
-        name: toolkit.displayName,
-        composioAccountId: authFlow.connectionId,
-        composioToolkit: toolkit.name,
-        tools,
-      });
+    await db.createComposioConnection({
+      name: toolkit.displayName,
+      composioAccountId: authFlow.connectionId,
+      composioToolkit: toolkit.name,
+      tools,
+    });
 
-      console.log(chalk.green(`\n✓ Connection created: ${toolkit.displayName}`));
-      console.log(chalk.gray(`Tools available: ${tools.length}`));
-    }
+    console.log(chalk.green(`\n✓ Connection created: ${toolkit.displayName}`));
+    console.log(chalk.gray(`Tools available: ${tools.length}`));
+    console.log(chalk.gray(`Connection ID: ${authFlow.connectionId}\n`));
   } catch (error) {
     console.error(chalk.red('✗ Failed to add connection'), error);
     process.exit(1);
