@@ -5,6 +5,7 @@
 
 import prisma from '../../db/client.js';
 import { DatabaseClient, ListSkillsOptions, SkillCreateInput, SkillUpdateInput } from '../types.js';
+import { afterSkillCreated, afterSkillUpdated, beforeSkillDeleted } from '../../services/composio/skill-hooks.js';
 
 export const db: DatabaseClient = {
   async listSkills(options?: ListSkillsOptions) {
@@ -35,7 +36,7 @@ export const db: DatabaseClient = {
 
   async createSkill(data: SkillCreateInput) {
     try {
-      return await prisma.skill.create({
+      const skill = await prisma.skill.create({
         data: {
           name: data.name,
           description: data.description,
@@ -46,6 +47,13 @@ export const db: DatabaseClient = {
           isSystem: false,
         },
       });
+
+      // Call Composio hook (non-blocking, graceful degradation)
+      afterSkillCreated(skill).catch(err =>
+        console.warn('[Composio] Hook failed:', err.message)
+      );
+
+      return skill;
     } catch (error) {
       throw new Error(
         `Failed to create skill: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -55,7 +63,7 @@ export const db: DatabaseClient = {
 
   async updateSkill(id: string, data: SkillUpdateInput) {
     try {
-      return await prisma.skill.update({
+      const skill = await prisma.skill.update({
         where: { id },
         data: {
           ...(data.name !== undefined && { name: data.name }),
@@ -66,6 +74,13 @@ export const db: DatabaseClient = {
           ...(data.isActive !== undefined && { isActive: data.isActive }),
         },
       });
+
+      // Call Composio hook (non-blocking, graceful degradation)
+      afterSkillUpdated(skill).catch(err =>
+        console.warn('[Composio] Hook failed:', err.message)
+      );
+
+      return skill;
     } catch (error) {
       throw new Error(
         `Failed to update skill: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -75,6 +90,11 @@ export const db: DatabaseClient = {
 
   async deleteSkill(id: string) {
     try {
+      // Call Composio hook before deletion (non-blocking, graceful degradation)
+      await beforeSkillDeleted(id).catch(err =>
+        console.warn('[Composio] Hook failed:', err.message)
+      );
+
       await prisma.skill.delete({
         where: { id },
       });
