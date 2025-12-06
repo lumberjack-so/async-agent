@@ -141,10 +141,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </Box>
       )}
 
-      {/* Input box with dynamic border */}
+      {/* Input box */}
       <Box
-        borderStyle="round"
-        borderColor={getBorderColor()}
         paddingX={1}
       >
         <Text color={disabled ? colors.status.pending : colors.primary}>▸ </Text>

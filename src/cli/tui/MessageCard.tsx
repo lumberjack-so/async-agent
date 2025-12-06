@@ -105,8 +105,6 @@ export const MessageCard: React.FC<MessageCardProps> = ({ message, index }) => {
 
       {/* Message content card */}
       <Box
-        borderStyle={borderStyle}
-        borderColor={borderColor}
         paddingX={2}
         paddingY={0}
         marginTop={0}
