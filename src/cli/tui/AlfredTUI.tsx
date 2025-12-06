@@ -17,7 +17,7 @@ import { Header } from './Header.js';
 import { StatusBar } from './StatusBar.js';
 import { SuccessCard } from './SuccessCard.js';
 import { ErrorCard, getErrorSuggestion } from './ErrorCard.js';
-import { brand } from './theme.js';
+import { brand, colors, getModeColor } from './theme.js';
 
 type AppMode = 'chat' | 'skills' | 'streaming' | 'history';
 type ExecutionMode = 'orchestrator' | 'classifier' | 'default';
@@ -455,10 +455,20 @@ Tips:
         onSubmit={handleSubmit}
         disabled={isStreaming}
         placeholder="Type your message or /command..."
+        onCommandSelect={handleSlashCommand}
       />
 
+      {/* Mode Indicator - Always Visible */}
+      <Box marginTop={0} marginBottom={1}>
+        <Text dimColor>Mode: </Text>
+        <Text color={getModeColor(executionMode)} bold>{executionMode}</Text>
+        <Text dimColor> • Press </Text>
+        <Text color={colors.primary}>Tab</Text>
+        <Text dimColor> to switch</Text>
+      </Box>
+
       {/* Status Bar */}
-      <Box marginTop={1}>
+      <Box marginTop={0}>
         <StatusBar isStreaming={isStreaming} mode={mode} canInterrupt={isStreaming} />
       </Box>
     </Box>

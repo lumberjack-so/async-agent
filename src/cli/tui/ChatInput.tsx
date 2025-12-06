@@ -1,11 +1,12 @@
 /**
- * Chat Input Component with Autocomplete Hints
- * Enhanced with dynamic border colors, slash command hints, and character counter
+ * Chat Input Component with Autocomplete Hints and Command Menu
+ * Enhanced with dynamic border colors, slash command hints, selectable command menu
  */
 
-import React from 'react';
-import { Box, Text, useFocus } from 'ink';
+import React, { useState } from 'react';
+import { Box, Text, useFocus, useInput } from 'ink';
 import TextInput from 'ink-text-input';
+import SelectInput from 'ink-select-input';
 import { colors } from './theme.js';
 
 interface ChatInputProps {
@@ -14,7 +15,22 @@ interface ChatInputProps {
   onSubmit: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  onCommandSelect?: (command: string) => void;
 }
+
+interface CommandItem {
+  label: string;
+  value: string;
+  description: string;
+}
+
+const AVAILABLE_COMMANDS: CommandItem[] = [
+  { label: '/skills', value: '/skills', description: 'Manage and browse your AI workflows' },
+  { label: '/history', value: '/history', description: 'View past execution history' },
+  { label: '/health', value: '/health', description: 'Check system status' },
+  { label: '/clear', value: '/clear', description: 'Clear chat history' },
+  { label: '/help', value: '/help', description: 'Show all available commands' },
+];
 
 /**
  * Get autocomplete hint for slash commands
@@ -45,12 +61,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onSubmit,
   disabled = false,
   placeholder = 'Type your message...',
+  onCommandSelect,
 }) => {
+  const [showCommandMenu, setShowCommandMenu] = useState(false);
+
   // Track focus state using Ink's useFocus hook
   const { isFocused } = useFocus({ autoFocus: !disabled });
 
+  // Show command menu when user types just "/"
+  const shouldShowMenu = value === '/' && !disabled;
+
   // Detect slash commands for autocomplete hints
-  const isCommand = value.startsWith('/');
+  const isCommand = value.startsWith('/') && value.length > 1;
   const commandHint = isCommand ? getCommandHint(value) : null;
 
   // Character count logic
@@ -64,10 +86,56 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     return colors.status.pending; // gray when not focused
   };
 
+  // Handle command selection from menu
+  const handleCommandSelect = (item: { label: string; value: string }) => {
+    onChange('');
+    setShowCommandMenu(false);
+    if (onCommandSelect) {
+      onCommandSelect(item.value);
+    } else {
+      onSubmit(item.value);
+    }
+  };
+
+  // Handle Escape key to close menu
+  useInput((input, key) => {
+    if (key.escape && shouldShowMenu) {
+      onChange('');
+      setShowCommandMenu(false);
+    }
+  });
+
   return (
     <Box flexDirection="column">
+      {/* Command Menu - shown when typing "/" */}
+      {shouldShowMenu && (
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={colors.primary}
+          paddingX={1}
+          marginBottom={1}
+        >
+          <Box marginBottom={0}>
+            <Text bold color={colors.primary}>Available Commands</Text>
+            <Text dimColor> (↑↓ to navigate, Enter to select, Esc to cancel)</Text>
+          </Box>
+          <SelectInput
+            items={AVAILABLE_COMMANDS}
+            onSelect={handleCommandSelect}
+            itemComponent={({ isSelected, label }) => (
+              <Box>
+                <Text color={isSelected ? colors.primary : colors.text.primary}>
+                  {isSelected ? '▸ ' : '  '}{label}
+                </Text>
+              </Box>
+            )}
+          />
+        </Box>
+      )}
+
       {/* Command autocomplete hint */}
-      {commandHint && (
+      {commandHint && !shouldShowMenu && (
         <Box marginBottom={0}>
           <Text dimColor>💡 {commandHint}</Text>
         </Box>
@@ -87,8 +155,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             value={value}
             onChange={onChange}
             onSubmit={() => {
-              onSubmit(value);
-              onChange('');
+              if (!shouldShowMenu) {
+                onSubmit(value);
+                onChange('');
+              }
             }}
             placeholder={placeholder}
             showCursor={!disabled}
