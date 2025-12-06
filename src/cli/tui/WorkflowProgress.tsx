@@ -29,15 +29,6 @@ export const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
   currentStepId,
   workflowName,
 }) => {
-  // Debug: Log what data the component is receiving
-  console.log('[WorkflowProgress] Rendering with steps:', steps.map(s => ({
-    id: s.id,
-    status: s.status,
-    hasDetails: !!s.details,
-    detailCount: s.details?.length || 0,
-    details: s.details
-  })));
-
   const totalSteps = steps.length;
   const completedSteps = steps.filter(s => s.status === 'complete').length;
   const progressPercent = totalSteps > 0 ? completedSteps / totalSteps : 0;
