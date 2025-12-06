@@ -48,7 +48,15 @@ echo "5️⃣  Installing dependencies..."
 npm install
 
 echo ""
-echo "6️⃣  Linking Alfred CLI globally..."
+echo "6️⃣  Building TypeScript..."
+npm run build
+
+echo ""
+echo "7️⃣  Setting executable permissions..."
+chmod +x dist/cli/index.js
+
+echo ""
+echo "8️⃣  Linking Alfred CLI globally..."
 npm link
 
 echo ""
