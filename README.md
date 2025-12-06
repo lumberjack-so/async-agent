@@ -7,6 +7,7 @@ A generic async agent server using Claude Agent SDK with dynamic MCP connections
 - **Interactive TUI**: Full-screen terminal UI with real-time streaming, chat interface, and async mode support
 - **Claude Agent SDK Integration**: Execute prompts with full agent capabilities
 - **Dynamic MCP Connections**: MCP server configurations are provided per-request via middleware
+- **Composio Integration**: Managed OAuth connections and automatic MCP config generation (optional) - [Learn more](COMPOSIO_README.md)
 - **Async Execution**: Support for both synchronous and asynchronous request processing
 - **Local File Storage**: Automatic detection and storage of generated files
 - **Prisma Database**: PostgreSQL database with encrypted credentials and execution history
@@ -147,6 +148,24 @@ alfred run "Test" --metadata '{"source":"cli","priority":"high"}'
 # JSON output
 alfred run "Test" --json
 ```
+
+#### Composio Connections (Optional)
+
+```bash
+# List all Composio connections
+alfred connections list
+alfred connections list --json
+
+# Add a new connection (e.g., GitHub, Slack)
+alfred connections add github
+alfred connections add slack
+
+# Delete a connection
+alfred connections delete <connection-id>
+alfred connections delete <connection-id> -y  # Skip confirmation
+```
+
+**What is Composio?** Composio provides managed OAuth and tool integrations for 100+ services. See [COMPOSIO_README.md](COMPOSIO_README.md) for full documentation.
 
 #### System Health
 
