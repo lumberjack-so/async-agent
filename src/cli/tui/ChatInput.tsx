@@ -6,7 +6,7 @@
 import React from 'react';
 import { Box, Text, useFocus } from 'ink';
 import TextInput from 'ink-text-input';
-import { colors } from './theme';
+import { colors } from './theme.js';
 
 interface ChatInputProps {
   value: string;
