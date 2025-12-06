@@ -6,7 +6,7 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
-import ProgressBar from 'ink-progress-bar';
+import { ProgressBar } from '@inkjs/ui';
 import figures from 'figures';
 import { colors, getStatusColor } from './theme.js';
 
@@ -59,12 +59,7 @@ export const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
 
       {/* Overall progress bar */}
       <Box marginBottom={1}>
-        <ProgressBar
-          percent={progressPercent}
-          columns={40}
-          character="█"
-          color="cyan"
-        />
+        <ProgressBar value={progressPercent} />
       </Box>
 
       {/* Step list */}
