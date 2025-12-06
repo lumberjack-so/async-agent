@@ -34,6 +34,16 @@ model Connection {
   /// Last time this connection was used in a skill execution
   lastUsedAt  DateTime? @map("last_used_at")
 
+  // NEW FIELDS (additive only - backward compatible)
+  /// Connection source: 'manual' (user-created) or 'composio' (managed by Composio)
+  source              String    @default("manual")
+  /// Composio connected_account ID (if source is 'composio')
+  composioAccountId   String?   @map("composio_account_id")
+  /// Composio toolkit name (e.g., 'github', 'slack', 'gmail')
+  composioToolkit     String?   @map("composio_toolkit")
+  /// Auth status: 'active', 'needs_auth', 'expired', 'failed'
+  authStatus          String    @default("active") @map("auth_status")
+
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
@@ -42,6 +52,8 @@ model Connection {
 
   @@index([type])
   @@index([isActive])
+  @@index([source])
+  @@index([authStatus])
   @@map("connections")
 }
 
@@ -75,6 +87,10 @@ model Skill {
   runCount        Int       @default(0) @map("run_count")
   /// Last execution timestamp
   lastRunAt       DateTime? @map("last_run_at")
+
+  // NEW FIELD (additive only)
+  /// Composio user ID for user-scoped MCP configs (optional)
+  composioUserId  String?   @map("composio_user_id")
 
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
@@ -146,4 +162,35 @@ model Config {
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
 
   @@map("config")
+}
+
+// NEW MODEL: Store Composio MCP configs per skill step
+model ComposioMcpConfig {
+  id              String    @id @default(uuid())
+  skillId         String    @map("skill_id")
+  stepOrder       Int       @map("step_order")
+  mcpConfigId     String    @map("mcp_config_id")
+  toolkits        String[]
+  allowedTools    String[]  @map("allowed_tools")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([skillId, stepOrder], name: "skillId_stepOrder")
+  @@index([skillId])
+  @@map("composio_mcp_configs")
+}
+
+// NEW MODEL: Cache Composio toolkit metadata
+model ComposioToolkit {
+  name            String    @id
+  displayName     String    @map("display_name")
+  description     String
+  category        String
+  logoUrl         String?   @map("logo_url")
+  authScheme      String    @map("auth_scheme")
+  tools           String[]
+  lastSynced      DateTime  @default(now()) @map("last_synced")
+
+  @@index([category])
+  @@map("composio_toolkits")
 }

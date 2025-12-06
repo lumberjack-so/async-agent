@@ -89,6 +89,15 @@ export const config = {
       {}
     ),
   },
+
+  // Composio integration (optional)
+  composio: {
+    apiKey: process.env.COMPOSIO_API_KEY,
+    baseUrl: process.env.COMPOSIO_BASE_URL || 'https://api.composio.dev',
+    userId: process.env.COMPOSIO_USER_ID,
+    enabled: !!process.env.COMPOSIO_API_KEY,
+    cacheToolkitListHours: parseIntEnv(process.env.COMPOSIO_CACHE_HOURS, 24),
+  },
 } as const;
 
 /**
@@ -273,4 +282,15 @@ export const featureFlags = {
   hasMcpTools: (): boolean => {
     return Object.keys(config.mcp.connections).length > 0;
   },
+
+  hasComposio: (): boolean => {
+    return config.composio.enabled && !!config.composio.apiKey;
+  },
 } as const;
+
+/**
+ * Helper to check if Composio is enabled
+ */
+export function isComposioEnabled(): boolean {
+  return config.composio.enabled && !!config.composio.apiKey;
+}

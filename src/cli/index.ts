@@ -19,6 +19,7 @@ import { healthCommand } from './commands/health.js';
 import { versionCommand } from './commands/version.js';
 import { modelConfigCommand } from './commands/config/model.js';
 import { tuiCommand } from './commands/tui.js';
+import { createConnectionsCommand } from './commands/connections/index.js';
 
 const program = new Command();
 
@@ -76,6 +77,12 @@ skills
   .action(async (id, options) => {
     await deleteSkillCommand(id, options);
   });
+
+// ============================================
+// CONNECTIONS COMMANDS (Composio)
+// ============================================
+
+program.addCommand(createConnectionsCommand());
 
 // ============================================
 // CONFIG COMMANDS
