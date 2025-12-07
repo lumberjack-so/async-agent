@@ -221,25 +221,38 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
         connectionId={authConnectionId}
         toolkitName={authToolkit.displayName}
         onComplete={async (status) => {
-          setScreen('loading');
+          console.log('\n🔍 onComplete called with status:', status);
 
-          // Save connection with actual auth status
-          const db = getComposioDatabase();
-          await db.createComposioConnection({
-            name: authToolkit.displayName,
-            composioAccountId: authConnectionId,
-            composioToolkit: authToolkit.name,
-            tools: authToolkit.tools || [], // Use toolkit's tools array
-            authStatus: status,
-          });
+          try {
+            setScreen('loading');
 
-          // Reset auth state
-          setAuthUrl('');
-          setAuthConnectionId('');
-          setAuthToolkit(null);
+            // Save connection with actual auth status
+            console.log('🔍 Saving connection to database...');
+            const db = getComposioDatabase();
+            await db.createComposioConnection({
+              name: authToolkit.displayName,
+              composioAccountId: authConnectionId,
+              composioToolkit: authToolkit.name,
+              tools: authToolkit.tools || [], // Use toolkit's tools array
+              authStatus: status,
+            });
+            console.log('🔍 Connection saved successfully');
 
-          // Reload data and return to list
-          await loadData();
+            // Reset auth state
+            setAuthUrl('');
+            setAuthConnectionId('');
+            setAuthToolkit(null);
+
+            // Reload data and return to list
+            console.log('🔍 Reloading data...');
+            await loadData();
+            console.log('🔍 Data reloaded, returning to list');
+            setScreen('list'); // FIX: Must set screen to show the list!
+          } catch (error) {
+            console.error('🔍 ERROR in onComplete:', error);
+            setError(error instanceof Error ? error.message : 'Failed to save connection');
+            setScreen('error');
+          }
         }}
       />
     );

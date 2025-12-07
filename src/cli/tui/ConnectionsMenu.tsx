@@ -602,25 +602,38 @@ export const ConnectionsMenu: React.FC<ConnectionsMenuProps> = ({ onBack }) => {
         connectionId={authConnectionId}
         toolkitName={authToolkit.displayName}
         onComplete={async (status) => {
-          setState('loading');
+          console.log('\n🔍 onComplete called with status:', status);
 
-          // Save connection with actual auth status
-          const db = getComposioDatabase();
-          await db.createComposioConnection({
-            name: authToolkit.displayName,
-            composioAccountId: authConnectionId,
-            composioToolkit: authToolkit.name,
-            tools: authToolkit.tools || [], // Use toolkit's tools array
-            authStatus: status,
-          });
+          try {
+            setState('loading');
 
-          // Reset auth state
-          setAuthUrl('');
-          setAuthConnectionId('');
-          setAuthToolkit(null);
+            // Save connection with actual auth status
+            console.log('🔍 Saving connection to database...');
+            const db = getComposioDatabase();
+            await db.createComposioConnection({
+              name: authToolkit.displayName,
+              composioAccountId: authConnectionId,
+              composioToolkit: authToolkit.name,
+              tools: authToolkit.tools || [], // Use toolkit's tools array
+              authStatus: status,
+            });
+            console.log('🔍 Connection saved successfully');
 
-          // Reload data and return to main
-          await loadData();
+            // Reset auth state
+            setAuthUrl('');
+            setAuthConnectionId('');
+            setAuthToolkit(null);
+
+            // Reload data and return to main
+            console.log('🔍 Reloading data...');
+            await loadData();
+            console.log('🔍 Data reloaded, returning to main');
+            setState('main');
+          } catch (error) {
+            console.error('🔍 ERROR in onComplete:', error);
+            setError(error instanceof Error ? error.message : 'Failed to save connection');
+            setState('main');
+          }
         }}
       />
     );
