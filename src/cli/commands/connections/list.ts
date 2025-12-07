@@ -17,8 +17,8 @@ interface ListOptions {
 export async function listConnectionsCommand(options: ListOptions) {
   try {
     if (!isComposioAvailable()) {
-      console.error(chalk.red('✗ Composio integration is not enabled'));
-      console.log(chalk.gray('Set COMPOSIO_API_KEY in your environment to enable Composio features'));
+      console.error(chalk.red('✗ Service connections are not enabled'));
+      console.log(chalk.gray('Set COMPOSIO_API_KEY in your environment to enable connections'));
       process.exit(1);
     }
 

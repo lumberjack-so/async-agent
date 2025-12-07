@@ -26,6 +26,7 @@ interface CommandItem {
 
 const AVAILABLE_COMMANDS: CommandItem[] = [
   { label: '/skills', value: '/skills', description: 'Manage and browse your AI workflows' },
+  { label: '/connections', value: '/connections', description: 'Manage service connections' },
   { label: '/history', value: '/history', description: 'View past execution history' },
   { label: '/health', value: '/health', description: 'Check system status' },
   { label: '/clear', value: '/clear', description: 'Clear chat history' },
@@ -39,11 +40,14 @@ const getCommandHint = (input: string): string | null => {
   const cmd = input.toLowerCase();
   const hints: Record<string, string> = {
     '/sk': 'Press Tab to autocomplete "/skills"',
+    '/co': 'Press Tab to autocomplete "/connections"',
     '/he': 'Press Tab to autocomplete "/health"',
     '/hi': 'Press Tab to autocomplete "/history"',
     '/cl': 'Press Tab to autocomplete "/clear"',
     '/help': 'Shows all available commands',
     '/skills': 'Manage and browse your AI workflows',
+    '/connections': 'Manage service connections',
+    '/conn': 'Manage service connections (alias)',
     '/history': 'View past execution history',
     '/health': 'Check system status',
     '/clear': 'Clear chat history',

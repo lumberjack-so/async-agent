@@ -209,7 +209,7 @@ Database: ${health.database || 'connected'}`,
       type: 'system',
       content: `Available commands:
   /skills      - Manage skills (list, create, edit, delete)
-  /connections - Manage Composio connections (or /conn)
+  /connections - Manage service connections (or /conn)
   /history     - Browse execution history
   /health      - Check system health
   /clear       - Clear chat history

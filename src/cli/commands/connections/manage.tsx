@@ -61,7 +61,7 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
       setScreen('loading');
 
       if (!isComposioAvailable()) {
-        setError('Composio integration is not enabled. Set COMPOSIO_API_KEY environment variable.');
+        setError('Service connections are not enabled. Set COMPOSIO_API_KEY environment variable.');
         setScreen('error');
         return;
       }
@@ -186,12 +186,12 @@ const ConnectionsList: React.FC<ConnectionsListProps> = ({
   onExit,
 }) => {
   const items = [
-    { label: '+ Browse toolkits and add connection', value: 'add' },
+    { label: '+ Add new connection', value: 'add' },
     ...connections.map((conn) => {
       const statusColor = getStatusColor(conn.authStatus);
       const statusText = formatAuthStatus(conn.authStatus);
       return {
-        label: `${statusText}  ${conn.name}  (${conn.composioToolkit || 'unknown'})`,
+        label: `${statusText}  ${conn.name}`,
         value: conn.id,
       };
     }),
@@ -205,7 +205,7 @@ const ConnectionsList: React.FC<ConnectionsListProps> = ({
   return (
     <Box flexDirection="column">
       <Text bold color="cyan">
-        🔌 Composio Connections
+        🔌 Connections
       </Text>
       <Text color="gray">
         {connections.length === 0
@@ -275,7 +275,7 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
         value: `category:${category}`,
       });
 
-      // Toolkits in category
+      // Services in category
       tkts.forEach((toolkit) => {
         items.push({
           label: `  ${toolkit.displayName} - ${toolkit.description.slice(0, 50)}${toolkit.description.length > 50 ? '...' : ''}`,
@@ -286,7 +286,7 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
 
   if (items.length === 0) {
     items.push({
-      label: 'No toolkits found. Try a different search.',
+      label: 'No services found. Try a different search.',
       value: 'none',
     });
   }
@@ -296,9 +296,9 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
   return (
     <Box flexDirection="column">
       <Text bold color="cyan">
-        📦 Browse Composio Toolkits
+        📦 Available Services
       </Text>
-      <Text color="gray">{toolkits.length} toolkits available</Text>
+      <Text color="gray">{toolkits.length} services available</Text>
 
       <Box marginTop={1} marginBottom={1}>
         <Text>Search: </Text>
@@ -369,7 +369,6 @@ const ConnectionOptions: React.FC<ConnectionOptionsProps> = ({
       <Text bold color="cyan">
         {connection.name}
       </Text>
-      <Text color="gray">Toolkit: {connection.composioToolkit}</Text>
       <Text color="gray">Status: {formatAuthStatus(connection.authStatus)}</Text>
       <Text color="gray">Tools: {connection.tools.length}</Text>
       <Text color="gray">Active: {connection.isActive ? 'Yes' : 'No'}</Text>
@@ -405,7 +404,7 @@ async function addConnection(toolkit: ComposioToolkit) {
   const client = getComposioClient();
   const db = getComposioDatabase();
 
-  console.log(chalk.cyan(`\nAdding connection for: ${toolkit.displayName}`));
+  console.log(chalk.cyan(`\nConnecting to ${toolkit.displayName}...`));
 
   // Initiate connection
   const authFlow = await client.initiateConnection({

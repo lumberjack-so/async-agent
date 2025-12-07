@@ -13,7 +13,7 @@ import { manageConnectionsCommand } from './manage.js';
 export function createConnectionsCommand(): Command {
   const connectionsCmd = new Command('connections')
     .alias('conn')
-    .description('Manage Composio connections')
+    .description('Manage service connections')
     .action(async () => {
       // Default action: launch TUI
       await manageConnectionsCommand();
@@ -22,20 +22,20 @@ export function createConnectionsCommand(): Command {
   // alfred connections list
   connectionsCmd
     .command('list')
-    .description('List all Composio connections')
+    .description('List all service connections')
     .option('--json', 'Output as JSON')
     .action(listConnectionsCommand);
 
-  // alfred connections add <toolkit>
+  // alfred connections add <service>
   connectionsCmd
     .command('add <toolkit>')
-    .description('Add a new Composio connection')
+    .description('Add a new service connection')
     .action(addConnectionCommand);
 
   // alfred connections delete <id>
   connectionsCmd
     .command('delete <connectionId>')
-    .description('Delete a Composio connection')
+    .description('Delete a service connection')
     .option('-y, --yes', 'Skip confirmation')
     .action(deleteConnectionCommand);
 
