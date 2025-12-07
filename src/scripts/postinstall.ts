@@ -7,9 +7,9 @@
  * - Run database migrations (if needed)
  */
 
-import '../src/cli/dotenv-init.js';
-import { syncToolkitsIfNeeded } from '../src/services/composio/toolkit-sync.js';
-import { isComposioAvailable } from '../src/services/composio/client.js';
+import '../cli/dotenv-init.js';
+import { syncToolkitsIfNeeded } from '../services/composio/toolkit-sync.js';
+import { isComposioAvailable } from '../services/composio/client.js';
 
 async function postInstall() {
   console.log('[PostInstall] Running post-install tasks...');

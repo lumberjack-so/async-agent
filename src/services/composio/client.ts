@@ -86,12 +86,34 @@ export class ComposioClient {
 
   async listToolkits(): Promise<ComposioToolkit[]> {
     const response = await this.client.get('/v3/toolkits');
-    return response.data.items || [];
+    const items = response.data.items || [];
+
+    // Transform API response to our format
+    return items.map((item: any) => ({
+      name: item.slug || item.name,
+      displayName: item.name,
+      description: item.meta?.description || '',
+      category: item.meta?.categories?.[0]?.name || 'Other',
+      logoUrl: item.meta?.logo || null,
+      authScheme: item.composio_managed_auth_schemes?.[0] || item.auth_schemes?.[0] || 'unknown',
+      tools: [], // Will be populated separately if needed
+    }));
   }
 
   async getToolkit(toolkitName: string): Promise<ComposioToolkit> {
     const response = await this.client.get(`/v3/toolkits/${toolkitName}`);
-    return response.data;
+    const item = response.data;
+
+    // Transform API response to our format
+    return {
+      name: item.slug || item.name,
+      displayName: item.name,
+      description: item.meta?.description || '',
+      category: item.meta?.categories?.[0]?.name || 'Other',
+      logoUrl: item.meta?.logo || null,
+      authScheme: item.composio_managed_auth_schemes?.[0] || item.auth_schemes?.[0] || 'unknown',
+      tools: [], // Will be populated separately if needed
+    };
   }
 
   async getToolkitTools(toolkitName: string): Promise<string[]> {
