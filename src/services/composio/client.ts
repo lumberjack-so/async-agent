@@ -59,11 +59,26 @@ export class ComposioClient {
     userId?: string;
     redirectUrl?: string;
   }): Promise<ComposioAuthFlow> {
-    const response = await this.client.post('/v3/connected_accounts', {
+    const userId = params.userId || this.userId;
+    const payload: any = {
       toolkit: params.toolkitName,
-      user_id: params.userId || this.userId,
-      redirect_url: params.redirectUrl,
-    });
+      auth_config: {
+        id: 'default',
+      },
+      connection: {
+        labels: [],
+      },
+    };
+
+    if (userId) {
+      payload.connection.entity_id = userId;
+    }
+
+    if (params.redirectUrl) {
+      payload.redirect_url = params.redirectUrl;
+    }
+
+    const response = await this.client.post('/v3/connected_accounts', payload);
 
     return {
       type: response.data.auth_scheme === 'oauth2' ? 'oauth' : 'api_key',

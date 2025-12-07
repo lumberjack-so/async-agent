@@ -101,7 +101,14 @@ export async function addConnectionCommand(toolkitName: string) {
     console.log(chalk.gray(`Tools available: ${tools.length}`));
     console.log(chalk.gray(`Connection ID: ${authFlow.connectionId}\n`));
   } catch (error) {
-    console.error(chalk.red('✗ Failed to add connection'), error);
+    console.error(chalk.red('✗ Failed to add connection'));
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as any;
+      if (axiosError.response?.data) {
+        console.error(chalk.yellow('API Error Details:'), JSON.stringify(axiosError.response.data, null, 2));
+      }
+    }
+    console.error(error);
     process.exit(1);
   }
 }

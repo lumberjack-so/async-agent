@@ -11,6 +11,7 @@ import { MessageHistory } from './MessageHistory.js';
 import { StreamingOutput } from './StreamingOutput.js';
 import { SkillsMenu } from './SkillsMenu.js';
 import { ExecutionHistory } from './ExecutionHistory.js';
+import { ConnectionsMenu } from './ConnectionsMenu.js';
 import { TokenUsageDisplay } from './TokenUsageDisplay.js';
 import { WorkflowProgress, WorkflowStep } from './WorkflowProgress.js';
 import { Header } from './Header.js';
@@ -19,7 +20,7 @@ import { SuccessCard } from './SuccessCard.js';
 import { ErrorCard, getErrorSuggestion } from './ErrorCard.js';
 import { brand, colors, getModeColor } from './theme.js';
 
-type AppMode = 'chat' | 'skills' | 'streaming' | 'history';
+type AppMode = 'chat' | 'skills' | 'streaming' | 'history' | 'connections';
 type ExecutionMode = 'orchestrator' | 'classifier' | 'default';
 
 interface Message {
@@ -170,18 +171,8 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
     }
   };
 
-  const launchConnections = async () => {
-    addSystemMessage('Launching connection manager...');
-    try {
-      const { manageConnectionsCommand } = await import('../commands/connections/manage.js');
-      exit(); // Exit current TUI
-      await manageConnectionsCommand(); // Launch connections TUI
-    } catch (error) {
-      addMessage({
-        type: 'system',
-        content: `✗ Failed to launch connections: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      });
-    }
+  const launchConnections = () => {
+    setMode('connections');
   };
 
   const checkHealth = async () => {
@@ -423,6 +414,17 @@ Tips:
   if (mode === 'history') {
     return (
       <ExecutionHistory
+        onBack={() => {
+          setMode('chat');
+          addSystemMessage('Returned to chat');
+        }}
+      />
+    );
+  }
+
+  if (mode === 'connections') {
+    return (
+      <ConnectionsMenu
         onBack={() => {
           setMode('chat');
           addSystemMessage('Returned to chat');
