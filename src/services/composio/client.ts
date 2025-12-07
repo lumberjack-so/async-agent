@@ -210,6 +210,31 @@ export class ComposioClient {
     }
   }
 
+  async getToolkitToolsDetailed(toolkitName: string): Promise<Array<{
+    name: string;
+    displayName: string;
+    description: string;
+  }>> {
+    try {
+      const appName = toolkitName.toUpperCase();
+
+      const response = await this.client.get('https://backend.composio.dev/api/v2/actions', {
+        params: { apps: appName }
+      });
+
+      const tools = response.data.items?.map((tool: any) => ({
+        name: tool.name,
+        displayName: tool.displayName || tool.display_name || tool.name,
+        description: tool.description || 'No description available',
+      })) || [];
+
+      return tools;
+    } catch (error) {
+      console.warn(`⚠️ Failed to fetch tool details for ${toolkitName}:`, error instanceof Error ? error.message : 'Unknown error');
+      return [];
+    }
+  }
+
   // ============== MCP Configs ==============
 
   async createMcpConfig(params: ComposioMcpConfigCreateParams): Promise<ComposioMcpConfigResponse> {

@@ -19,7 +19,7 @@ import { formatAuthStatus, getStatusColor } from '../../../services/composio/uti
 import { getPrismaClient } from '../../../db/client.js';
 import { OAuthAuthScreen } from '../../tui/OAuthAuthScreen.js';
 
-type Screen = 'list' | 'add' | 'browse' | 'options' | 'loading' | 'error' | 'auth';
+type Screen = 'list' | 'add' | 'browse' | 'options' | 'loading' | 'error' | 'auth' | 'view_tools';
 
 interface Props {
   onExit?: () => void;
@@ -197,6 +197,7 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
     return (
       <ConnectionOptions
         connection={selectedConnection}
+        onViewTools={() => setScreen('view_tools')}
         onReauthenticate={async () => {
           setScreen('loading');
           await reauthenticateConnection(selectedConnection);
@@ -213,6 +214,16 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
           await loadData();
         }}
         onBack={() => setScreen('list')}
+      />
+    );
+  }
+
+  // Render view tools screen
+  if (screen === 'view_tools' && selectedConnection) {
+    return (
+      <ViewToolsScreen
+        connection={selectedConnection}
+        onBack={() => setScreen('options')}
       />
     );
   }
@@ -449,6 +460,7 @@ interface ConnectionOptionsProps {
   onReauthenticate: () => Promise<void>;
   onToggleActive: () => Promise<void>;
   onDelete: () => Promise<void>;
+  onViewTools: () => void;
   onBack: () => void;
 }
 
@@ -457,9 +469,11 @@ const ConnectionOptions: React.FC<ConnectionOptionsProps> = ({
   onReauthenticate,
   onToggleActive,
   onDelete,
+  onViewTools,
   onBack,
 }) => {
   const items = [
+    { label: '🔧 View Tools', value: 'view_tools' },
     { label: '🔄 Reauthenticate', value: 'reauth' },
     {
       label: connection.isActive ? '⏸  Disable' : '▶️  Enable',
@@ -483,6 +497,9 @@ const ConnectionOptions: React.FC<ConnectionOptionsProps> = ({
           items={items}
           onSelect={async (item) => {
             switch (item.value) {
+              case 'view_tools':
+                onViewTools();
+                break;
               case 'reauth':
                 await onReauthenticate();
                 break;
@@ -499,6 +516,104 @@ const ConnectionOptions: React.FC<ConnectionOptionsProps> = ({
           }}
         />
       </Box>
+    </Box>
+  );
+};
+
+// ============== View Tools Screen ==============
+
+interface ViewToolsScreenProps {
+  connection: Connection;
+  onBack: () => void;
+}
+
+const ViewToolsScreen: React.FC<ViewToolsScreenProps> = ({ connection, onBack }) => {
+  const [tools, setTools] = useState<Array<{
+    name: string;
+    displayName: string;
+    description: string;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadTools() {
+      if (!connection.composioToolkit) {
+        setError('No toolkit associated with this connection');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const client = getComposioClient();
+        const toolsData = await client.getToolkitToolsDetailed(connection.composioToolkit);
+        setTools(toolsData);
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load tools');
+        setLoading(false);
+      }
+    }
+
+    loadTools();
+  }, [connection]);
+
+  if (loading) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text>
+          <Spinner type="dots" />
+          {' Loading tools...'}
+        </Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <Text color="red">Error: {error}</Text>
+        <Box marginTop={1}>
+          <Text color="gray">Press Enter to go back</Text>
+        </Box>
+        <SelectInput
+          items={[{ label: '← Back', value: 'back' }]}
+          onSelect={() => onBack()}
+        />
+      </Box>
+    );
+  }
+
+  const items = tools.map(tool => ({
+    label: `${tool.displayName}`,
+    value: tool.name,
+  }));
+  items.push({ label: '← Back', value: 'back' });
+
+  return (
+    <Box flexDirection="column" padding={1}>
+      <Text bold color="cyan">
+        {connection.name} - Available Tools ({tools.length})
+      </Text>
+      <Box marginTop={1} marginBottom={1}>
+        <Text color="gray">Select a tool to see its description:</Text>
+      </Box>
+
+      <SelectInput
+        items={items}
+        onSelect={(item) => {
+          if (item.value === 'back') {
+            onBack();
+          } else {
+            const tool = tools.find(t => t.name === item.value);
+            if (tool) {
+              console.log('\n' + chalk.cyan.bold(tool.displayName));
+              console.log(chalk.gray('Name:') + ' ' + tool.name);
+              console.log(chalk.gray('Description:') + ' ' + tool.description + '\n');
+            }
+          }
+        }}
+      />
     </Box>
   );
 };
