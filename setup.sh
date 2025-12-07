@@ -52,11 +52,15 @@ echo "6️⃣  Building TypeScript..."
 npm run build
 
 echo ""
-echo "7️⃣  Setting executable permissions..."
+echo "7️⃣  Syncing Composio toolkits..."
+node dist/scripts/postinstall.js || echo "⚠️  Toolkit sync skipped (Composio not configured)"
+
+echo ""
+echo "8️⃣  Setting executable permissions..."
 chmod +x dist/cli/index.js
 
 echo ""
-echo "8️⃣  Linking Alfred CLI globally..."
+echo "9️⃣  Linking Alfred CLI globally..."
 npm link
 
 echo ""
