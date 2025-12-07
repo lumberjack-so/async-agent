@@ -23,6 +23,8 @@ import { metrics, getUptimeString } from './utils/monitoring.js';
 import { checkDatabaseHealth } from './database.js';
 import { createEnvConnectionsMiddleware } from './middleware/connections.js';
 import streamRoutes from './routes/stream.js';
+import { syncToolkitsIfNeeded } from './services/composio/toolkit-sync.js';
+import { checkConnectionsOnStartup } from './services/composio/connection-status-checker.js';
 
 const app = express();
 
@@ -113,12 +115,20 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 3001;
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`[Server] Async agent server listening on port ${PORT}`);
   console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`[Server] Health check: http://localhost:${PORT}/health`);
   console.log(`[Server] Metrics: http://localhost:${PORT}/metrics`);
   console.log(`[Server] Webhook: POST http://localhost:${PORT}/webhook`);
+
+  // Composio: Sync toolkits and check connection status
+  try {
+    await syncToolkitsIfNeeded();
+    await checkConnectionsOnStartup();
+  } catch (error) {
+    console.error('[Composio] Startup tasks failed:', error);
+  }
 });
 
 // Graceful shutdown

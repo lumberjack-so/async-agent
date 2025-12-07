@@ -8,14 +8,15 @@ import { Command } from 'commander';
 import { listConnectionsCommand } from './list.js';
 import { addConnectionCommand } from './add.js';
 import { deleteConnectionCommand } from './delete.js';
+import { manageConnectionsCommand } from './manage.js';
 
 export function createConnectionsCommand(): Command {
   const connectionsCmd = new Command('connections')
     .alias('conn')
     .description('Manage Composio connections')
-    .action(() => {
-      // Default action: show help
-      connectionsCmd.help();
+    .action(async () => {
+      // Default action: launch TUI
+      await manageConnectionsCommand();
     });
 
   // alfred connections list

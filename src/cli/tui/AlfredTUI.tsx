@@ -148,6 +148,10 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
       case '/history':
         setMode('history');
         break;
+      case '/connections':
+      case '/conn':
+        launchConnections();
+        break;
       case '/health':
         checkHealth();
         break;
@@ -163,6 +167,20 @@ export const AlfredTUI: React.FC<AlfredTUIProps> = ({ onExit }) => {
       default:
         addSystemMessage(`Unknown command: ${cmd}`);
         showHelp();
+    }
+  };
+
+  const launchConnections = async () => {
+    addSystemMessage('Launching connection manager...');
+    try {
+      const { manageConnectionsCommand } = await import('../commands/connections/manage.js');
+      exit(); // Exit current TUI
+      await manageConnectionsCommand(); // Launch connections TUI
+    } catch (error) {
+      addMessage({
+        type: 'system',
+        content: `✗ Failed to launch connections: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     }
   };
 
@@ -190,11 +208,12 @@ Database: ${health.database || 'connected'}`,
     addMessage({
       type: 'system',
       content: `Available commands:
-  /skills    - Manage skills (list, create, edit, delete)
-  /history   - Browse execution history
-  /health    - Check system health
-  /clear     - Clear chat history
-  /help      - Show this help message
+  /skills      - Manage skills (list, create, edit, delete)
+  /connections - Manage Composio connections (or /conn)
+  /history     - Browse execution history
+  /health      - Check system health
+  /clear       - Clear chat history
+  /help        - Show this help message
 
 Tips:
   • Press Tab to cycle execution mode (orchestrator/classifier/default)

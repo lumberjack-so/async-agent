@@ -93,7 +93,7 @@ export const config = {
   // Composio integration (optional)
   composio: {
     apiKey: process.env.COMPOSIO_API_KEY,
-    baseUrl: process.env.COMPOSIO_BASE_URL || 'https://api.composio.dev',
+    baseUrl: process.env.COMPOSIO_BASE_URL || 'https://backend.composio.dev/api',
     userId: process.env.COMPOSIO_USER_ID,
     enabled: !!process.env.COMPOSIO_API_KEY,
     cacheToolkitListHours: parseIntEnv(process.env.COMPOSIO_CACHE_HOURS, 24),

@@ -24,8 +24,8 @@ export interface ComposioToolkit {
   displayName: string;
   description: string;
   category: string;
-  logoUrl?: string;
-  authScheme: 'oauth2' | 'api_key' | 'basic';
+  logoUrl: string | null;
+  authScheme: string;
   tools: string[];
 }
 
