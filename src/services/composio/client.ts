@@ -61,6 +61,9 @@ export class ComposioClient {
   }): Promise<ComposioAuthFlow> {
     const userId = params.userId || this.userId;
 
+    // Get toolkit metadata to determine auth scheme
+    const toolkit = await this.getToolkit(params.toolkitName);
+
     // Get or create auth config for this toolkit
     const authConfigId = await this.getOrCreateAuthConfig(params.toolkitName);
 
@@ -84,9 +87,19 @@ export class ComposioClient {
 
     const response = await this.client.post('/v3/connected_accounts', payload);
 
+    // DEBUG: Log raw Composio response
+    console.log('\n🔍 RAW COMPOSIO RESPONSE:', JSON.stringify({
+      toolkit_auth_scheme: toolkit.authScheme,
+      response_redirect_url: response.data.redirect_url,
+      response_id: response.data.id,
+    }, null, 2));
+
+    // Use toolkit metadata to determine auth type (more reliable than response)
+    const isOAuth = toolkit.authScheme?.toUpperCase() === 'OAUTH2';
+
     return {
-      type: response.data.auth_scheme === 'oauth2' ? 'oauth' : 'api_key',
-      authUrl: response.data.auth_url,
+      type: isOAuth ? 'oauth' : 'api_key',
+      authUrl: response.data.redirect_url, // FIX: Composio returns redirect_url, not auth_url
       authStatus: 'pending',
       connectionId: response.data.id,
     };

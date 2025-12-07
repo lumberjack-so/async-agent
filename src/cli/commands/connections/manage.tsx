@@ -146,6 +146,9 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
               toolkitName: toolkit.name,
             });
 
+            // DEBUG: Log what Composio returns
+            console.log('\n🔍 DEBUG: authFlow response:', JSON.stringify(authFlow, null, 2));
+
             if (!authFlow.connectionId) {
               setError('Failed to initiate connection');
               setScreen('error');

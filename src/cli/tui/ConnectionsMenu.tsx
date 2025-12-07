@@ -479,6 +479,9 @@ export const ConnectionsMenu: React.FC<ConnectionsMenuProps> = ({ onBack }) => {
                       toolkitName: toolkit.name,
                     });
 
+                    // DEBUG: Log what Composio returns
+                    console.log('\n🔍 DEBUG: authFlow response:', JSON.stringify(authFlow, null, 2));
+
                     if (!authFlow.connectionId) {
                       setError('Failed to initiate connection');
                       setState('main');
