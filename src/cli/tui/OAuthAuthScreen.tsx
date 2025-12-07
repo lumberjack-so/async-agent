@@ -44,29 +44,20 @@ export const OAuthAuthScreen: React.FC<OAuthAuthScreenProps> = ({
 
         if (status === 'active') {
           setState('success');
-          setTimeout(() => {
-            if (isMounted) {
-              onComplete('active');
-            }
-          }, 1500); // Show success message briefly
+          // Call immediately - don't wait, component might unmount!
+          onComplete('active');
         } else if (status === 'failed') {
           setState('failed');
-          setTimeout(() => {
-            if (isMounted) {
-              onComplete('failed');
-            }
-          }, 2000);
+          // Call immediately - don't wait, component might unmount!
+          onComplete('failed');
         } else {
           // Still pending, continue polling
           setAttempts((prev) => {
             const newAttempts = prev + 1;
             if (newAttempts >= maxAttempts) {
               setState('timeout');
-              setTimeout(() => {
-                if (isMounted) {
-                  onComplete('needs_auth');
-                }
-              }, 2000);
+              // Call immediately - don't wait, component might unmount!
+              onComplete('needs_auth');
               return prev;
             }
             return newAttempts;
@@ -83,11 +74,8 @@ export const OAuthAuthScreen: React.FC<OAuthAuthScreenProps> = ({
           const newAttempts = prev + 1;
           if (newAttempts >= maxAttempts) {
             setState('timeout');
-            setTimeout(() => {
-              if (isMounted) {
-                onComplete('needs_auth');
-              }
-            }, 2000);
+            // Call immediately - don't wait, component might unmount!
+            onComplete('needs_auth');
             return prev;
           }
           return newAttempts;
