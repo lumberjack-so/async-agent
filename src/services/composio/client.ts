@@ -192,12 +192,16 @@ export class ComposioClient {
 
   async getToolkitTools(toolkitName: string): Promise<string[]> {
     try {
-      // Use /v3/tools with toolkit filter
-      const response = await this.client.get('/v3/tools', {
-        params: { toolkit: toolkitName }
+      // Use v2 API (v3 /tools endpoint is bugged and ignores toolkit filter)
+      // v2 uses uppercase app names: "gmail" -> "GMAIL", "linear" -> "LINEAR"
+      // v2 API is on backend.composio.dev, not api.composio.dev
+      const appName = toolkitName.toUpperCase();
+
+      const response = await this.client.get('https://backend.composio.dev/api/v2/actions', {
+        params: { apps: appName }
       });
 
-      const tools = response.data.items?.map((tool: any) => tool.slug || tool.name) || [];
+      const tools = response.data.items?.map((tool: any) => tool.name) || [];
       console.log(`🔍 Fetched ${tools.length} tools for ${toolkitName}`);
       return tools;
     } catch (error) {
