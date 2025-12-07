@@ -61,7 +61,7 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
       setScreen('loading');
 
       if (!isComposioAvailable()) {
-        setError('Service connections are not enabled. Set COMPOSIO_API_KEY environment variable.');
+        setError('Connections are not enabled. Set COMPOSIO_API_KEY environment variable.');
         setScreen('error');
         return;
       }
@@ -286,7 +286,7 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
 
   if (items.length === 0) {
     items.push({
-      label: 'No services found. Try a different search.',
+      label: 'No connections found. Try a different search.',
       value: 'none',
     });
   }
@@ -296,9 +296,9 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
   return (
     <Box flexDirection="column">
       <Text bold color="cyan">
-        📦 Available Services
+        📦 Available Connections
       </Text>
-      <Text color="gray">{toolkits.length} services available</Text>
+      <Text color="gray">{toolkits.length} connections available</Text>
 
       <Box marginTop={1} marginBottom={1}>
         <Text>Search: </Text>

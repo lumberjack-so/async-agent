@@ -13,7 +13,7 @@ import { manageConnectionsCommand } from './manage.js';
 export function createConnectionsCommand(): Command {
   const connectionsCmd = new Command('connections')
     .alias('conn')
-    .description('Manage service connections')
+    .description('Manage connections')
     .action(async () => {
       // Default action: launch TUI
       await manageConnectionsCommand();
@@ -22,20 +22,20 @@ export function createConnectionsCommand(): Command {
   // alfred connections list
   connectionsCmd
     .command('list')
-    .description('List all service connections')
+    .description('List all connections')
     .option('--json', 'Output as JSON')
     .action(listConnectionsCommand);
 
   // alfred connections add <service>
   connectionsCmd
     .command('add <toolkit>')
-    .description('Add a new service connection')
+    .description('Add a new connection')
     .action(addConnectionCommand);
 
   // alfred connections delete <id>
   connectionsCmd
     .command('delete <connectionId>')
-    .description('Delete a service connection')
+    .description('Delete a connection')
     .option('-y, --yes', 'Skip confirmation')
     .action(deleteConnectionCommand);
 

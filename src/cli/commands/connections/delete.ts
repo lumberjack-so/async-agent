@@ -18,7 +18,7 @@ export async function deleteConnectionCommand(
 ) {
   try {
     if (!isComposioAvailable()) {
-      console.error(chalk.red('✗ Composio integration is not enabled'));
+      console.error(chalk.red('✗ Connections integration is not enabled'));
       process.exit(1);
     }
 
@@ -36,7 +36,7 @@ export async function deleteConnectionCommand(
     }
 
     if (connection.source !== 'composio') {
-      console.error(chalk.red(`✗ Connection is not a Composio connection`));
+      console.error(chalk.red(`✗ Connection is not a valid connection`));
       process.exit(1);
     }
 

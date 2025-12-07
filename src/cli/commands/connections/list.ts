@@ -17,7 +17,7 @@ interface ListOptions {
 export async function listConnectionsCommand(options: ListOptions) {
   try {
     if (!isComposioAvailable()) {
-      console.error(chalk.red('✗ Service connections are not enabled'));
+      console.error(chalk.red('✗ Connections are not enabled'));
       console.log(chalk.gray('Set COMPOSIO_API_KEY in your environment to enable connections'));
       process.exit(1);
     }
@@ -49,10 +49,10 @@ export async function listConnectionsCommand(options: ListOptions) {
 
       // Map color name to chalk function
       const colorFn = colorName === 'green' ? chalk.green :
-                       colorName === 'yellow' ? chalk.yellow :
-                       colorName === 'red' ? chalk.red :
-                       colorName === 'gray' ? chalk.gray :
-                       chalk.white;
+        colorName === 'yellow' ? chalk.yellow :
+          colorName === 'red' ? chalk.red :
+            colorName === 'gray' ? chalk.gray :
+              chalk.white;
 
       table.push([
         colorFn(status),
