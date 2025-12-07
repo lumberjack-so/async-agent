@@ -164,11 +164,15 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
               setScreen('auth');
             } else {
               // Non-OAuth, save immediately as active
+              // Fetch toolkit tools from Composio API
+              const client = getComposioClient();
+              const tools = await client.getToolkitTools(toolkit.name);
+
               await db.createComposioConnection({
                 name: toolkit.displayName,
                 composioAccountId: authFlow.connectionId,
                 composioToolkit: toolkit.name,
-                tools: toolkit.tools || [], // Use toolkit's tools array
+                tools,
                 authStatus: 'active',
               });
 
@@ -229,11 +233,17 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
             // Save connection with actual auth status
             console.log('🔍 Saving connection to database...');
             const db = getComposioDatabase();
+
+            // Fetch toolkit tools from Composio API
+            const client = getComposioClient();
+            const tools = await client.getToolkitTools(authToolkit.name);
+            console.log(`🔍 Fetched ${tools.length} tools for ${authToolkit.name}`);
+
             await db.createComposioConnection({
               name: authToolkit.displayName,
               composioAccountId: authConnectionId,
               composioToolkit: authToolkit.name,
-              tools: authToolkit.tools || [], // Use toolkit's tools array
+              tools,
               authStatus: status,
             });
             console.log('🔍 Connection saved successfully');

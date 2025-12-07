@@ -85,12 +85,17 @@ export async function addConnectionCommand(toolkitName: string) {
       }
     }
 
+    // Fetch toolkit's tools from Composio API
+    console.log(chalk.gray('Fetching toolkit tools...'));
+    const tools = await client.getToolkitTools(toolkit.name);
+    console.log(chalk.gray(`Found ${tools.length} tools`));
+
     // Save to database with toolkit's tools
     await db.createComposioConnection({
       name: toolkit.displayName,
       composioAccountId: authFlow.connectionId,
       composioToolkit: toolkit.name,
-      tools: toolkit.tools || [], // Use toolkit's tools array
+      tools,
       authStatus: 'active', // If we reached here, auth was successful
     });
 

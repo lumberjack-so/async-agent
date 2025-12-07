@@ -154,6 +154,11 @@ export class ComposioClient {
     const response = await this.client.get('/v3/toolkits');
     const items = response.data.items || [];
 
+    // DEBUG: Log first toolkit to see what Composio returns
+    if (items.length > 0) {
+      console.log('\n🔍 Sample toolkit from Composio API:', JSON.stringify(items[0], null, 2));
+    }
+
     // Transform API response to our format
     return items.map((item: any) => ({
       name: item.slug || item.name,
@@ -162,13 +167,16 @@ export class ComposioClient {
       category: item.meta?.categories?.[0]?.name || 'Other',
       logoUrl: item.meta?.logo || null,
       authScheme: item.composio_managed_auth_schemes?.[0] || item.auth_schemes?.[0] || 'unknown',
-      tools: [], // Will be populated separately if needed
+      tools: item.tools || item.actions || [], // Try both 'tools' and 'actions' fields
     }));
   }
 
   async getToolkit(toolkitName: string): Promise<ComposioToolkit> {
     const response = await this.client.get(`/v3/toolkits/${toolkitName}`);
     const item = response.data;
+
+    // DEBUG: Log what single toolkit endpoint returns
+    console.log(`\n🔍 GET /v3/toolkits/${toolkitName} response:`, JSON.stringify(item, null, 2));
 
     // Transform API response to our format
     return {
@@ -183,8 +191,19 @@ export class ComposioClient {
   }
 
   async getToolkitTools(toolkitName: string): Promise<string[]> {
-    const response = await this.client.get(`/v3/toolkits/${toolkitName}/tools`);
-    return response.data.items?.map((tool: any) => tool.name) || [];
+    try {
+      // Use /v3/tools with toolkit filter
+      const response = await this.client.get('/v3/tools', {
+        params: { toolkit: toolkitName }
+      });
+
+      const tools = response.data.items?.map((tool: any) => tool.slug || tool.name) || [];
+      console.log(`🔍 Fetched ${tools.length} tools for ${toolkitName}`);
+      return tools;
+    } catch (error) {
+      console.warn(`⚠️ Failed to fetch tools for ${toolkitName}:`, error instanceof Error ? error.message : 'Unknown error');
+      return [];
+    }
   }
 
   // ============== MCP Configs ==============
