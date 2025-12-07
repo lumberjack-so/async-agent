@@ -134,7 +134,18 @@ export class ComposioClient {
 
   async checkConnectionStatus(accountId: string): Promise<AuthStatus> {
     const account = await this.getConnectedAccount(accountId);
-    return account.status as AuthStatus;
+
+    // DEBUG: Log what Composio returns for connection status
+    const accountAny = account as any;
+    console.log('\n🔍 CHECK STATUS RESPONSE:', JSON.stringify({
+      id: account.id,
+      status: accountAny.status,
+      normalized: accountAny.status?.toLowerCase(),
+    }, null, 2));
+
+    // Normalize status to lowercase (Composio returns UPPERCASE)
+    const status = account.status?.toLowerCase() as AuthStatus;
+    return status;
   }
 
   // ============== Toolkits ==============
