@@ -60,10 +60,14 @@ export class ComposioClient {
     redirectUrl?: string;
   }): Promise<ComposioAuthFlow> {
     const userId = params.userId || this.userId;
+
+    // Get or create auth config for this toolkit
+    const authConfigId = await this.getOrCreateAuthConfig(params.toolkitName);
+
     const payload: any = {
       toolkit: params.toolkitName,
       auth_config: {
-        id: 'default',
+        id: authConfigId,
       },
       connection: {
         labels: [],
@@ -86,6 +90,29 @@ export class ComposioClient {
       authStatus: 'pending',
       connectionId: response.data.id,
     };
+  }
+
+  async getOrCreateAuthConfig(toolkitName: string): Promise<string> {
+    // Try to get existing auth config
+    const response = await this.client.get('/v3/auth_configs', {
+      params: { toolkit: toolkitName },
+    });
+
+    const existingConfigs = response.data.items || [];
+    if (existingConfigs.length > 0) {
+      return existingConfigs[0].id;
+    }
+
+    // Create new Composio-managed auth config
+    const createResponse = await this.client.post('/v3/auth_configs', {
+      toolkit: { slug: toolkitName },
+      name: toolkitName,
+      auth_config: {
+        type: 'use_composio_managed_auth',
+      },
+    });
+
+    return createResponse.data.auth_config.id;
   }
 
   async deleteConnectedAccount(accountId: string): Promise<void> {

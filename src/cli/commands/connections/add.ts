@@ -85,20 +85,15 @@ export async function addConnectionCommand(toolkitName: string) {
       }
     }
 
-    // Get tools for this toolkit
-    console.log(chalk.gray('\nFetching available tools...'));
-    const tools = await client.getToolkitTools(toolkit.name);
-
-    // Save to database
+    // Save to database (tools will be fetched on first use)
     await db.createComposioConnection({
       name: toolkit.displayName,
       composioAccountId: authFlow.connectionId,
       composioToolkit: toolkit.name,
-      tools,
+      tools: [], // Tools will be populated on first use
     });
 
     console.log(chalk.green(`\n✓ Connection created: ${toolkit.displayName}`));
-    console.log(chalk.gray(`Tools available: ${tools.length}`));
     console.log(chalk.gray(`Connection ID: ${authFlow.connectionId}\n`));
   } catch (error) {
     console.error(chalk.red('✗ Failed to add connection'));
