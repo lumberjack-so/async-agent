@@ -156,12 +156,12 @@ export const ConnectionsMenu: React.FC<ConnectionsMenuProps> = ({ onBack }) => {
       finalStatus = 'active';
     }
 
-    // Save to database with actual status (tools will be fetched on first use)
+    // Save to database with actual status and toolkit's tools
     await db.createComposioConnection({
       name: toolkit.displayName,
       composioAccountId: authFlow.connectionId,
       composioToolkit: toolkit.name,
-      tools: [],
+      tools: toolkit.tools || [], // Use toolkit's tools array
       authStatus: finalStatus,
     });
 
@@ -501,7 +501,7 @@ export const ConnectionsMenu: React.FC<ConnectionsMenuProps> = ({ onBack }) => {
                         name: toolkit.displayName,
                         composioAccountId: authFlow.connectionId,
                         composioToolkit: toolkit.name,
-                        tools: [],
+                        tools: toolkit.tools || [], // Use toolkit's tools array
                         authStatus: 'active',
                       });
 
@@ -610,7 +610,7 @@ export const ConnectionsMenu: React.FC<ConnectionsMenuProps> = ({ onBack }) => {
             name: authToolkit.displayName,
             composioAccountId: authConnectionId,
             composioToolkit: authToolkit.name,
-            tools: [],
+            tools: authToolkit.tools || [], // Use toolkit's tools array
             authStatus: status,
           });
 

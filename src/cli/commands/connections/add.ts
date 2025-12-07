@@ -85,12 +85,12 @@ export async function addConnectionCommand(toolkitName: string) {
       }
     }
 
-    // Save to database (tools will be fetched on first use)
+    // Save to database with toolkit's tools
     await db.createComposioConnection({
       name: toolkit.displayName,
       composioAccountId: authFlow.connectionId,
       composioToolkit: toolkit.name,
-      tools: [], // Tools will be populated on first use
+      tools: toolkit.tools || [], // Use toolkit's tools array
       authStatus: 'active', // If we reached here, auth was successful
     });
 

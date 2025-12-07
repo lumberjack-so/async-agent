@@ -168,7 +168,7 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
                 name: toolkit.displayName,
                 composioAccountId: authFlow.connectionId,
                 composioToolkit: toolkit.name,
-                tools: [],
+                tools: toolkit.tools || [], // Use toolkit's tools array
                 authStatus: 'active',
               });
 
@@ -229,7 +229,7 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
             name: authToolkit.displayName,
             composioAccountId: authConnectionId,
             composioToolkit: authToolkit.name,
-            tools: [],
+            tools: authToolkit.tools || [], // Use toolkit's tools array
             authStatus: status,
           });
 
