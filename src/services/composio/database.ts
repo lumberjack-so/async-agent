@@ -75,6 +75,7 @@ export class ComposioDatabase {
     composioAccountId: string;
     composioToolkit: string;
     tools: string[];
+    authStatus: 'active' | 'needs_auth' | 'expired' | 'failed';
   }): Promise<Connection> {
     return prisma.connection.create({
       data: {
@@ -85,8 +86,8 @@ export class ComposioDatabase {
         composioToolkit: params.composioToolkit,
         tools: params.tools,
         config: {}, // No local config needed for Composio
-        authStatus: 'active',
-        isActive: true,
+        authStatus: params.authStatus,
+        isActive: params.authStatus === 'active',
       },
     });
   }

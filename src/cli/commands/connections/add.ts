@@ -91,6 +91,7 @@ export async function addConnectionCommand(toolkitName: string) {
       composioAccountId: authFlow.connectionId,
       composioToolkit: toolkit.name,
       tools: [], // Tools will be populated on first use
+      authStatus: 'active', // If we reached here, auth was successful
     });
 
     console.log(chalk.green(`\n✓ Connection created: ${toolkit.displayName}`));

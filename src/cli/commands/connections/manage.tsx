@@ -17,8 +17,9 @@ import { getComposioDatabase } from '../../../services/composio/database.js';
 import { getToolkitSyncService } from '../../../services/composio/toolkit-sync.js';
 import { formatAuthStatus, getStatusColor } from '../../../services/composio/utils.js';
 import { getPrismaClient } from '../../../db/client.js';
+import { OAuthAuthScreen } from '../../tui/OAuthAuthScreen.js';
 
-type Screen = 'list' | 'add' | 'browse' | 'options' | 'loading' | 'error';
+type Screen = 'list' | 'add' | 'browse' | 'options' | 'loading' | 'error' | 'auth';
 
 interface Props {
   onExit?: () => void;
@@ -34,6 +35,11 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
   const [selectedConnection, setSelectedConnection] = useState<Connection | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Auth flow state
+  const [authUrl, setAuthUrl] = useState<string>('');
+  const [authConnectionId, setAuthConnectionId] = useState<string>('');
+  const [authToolkit, setAuthToolkit] = useState<ComposioToolkit | null>(null);
 
   // Load data on mount
   useEffect(() => {
@@ -130,9 +136,46 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
         onSearchChange={setSearchQuery}
         onSelect={async (toolkit) => {
           setScreen('loading');
-          await addConnection(toolkit);
-          setSearchQuery('');
-          await loadData();
+
+          try {
+            const client = getComposioClient();
+            const db = getComposioDatabase();
+
+            // Initiate connection
+            const authFlow = await client.initiateConnection({
+              toolkitName: toolkit.name,
+            });
+
+            if (!authFlow.connectionId) {
+              setError('Failed to initiate connection');
+              setScreen('error');
+              return;
+            }
+
+            // If OAuth, show auth screen
+            if (authFlow.type === 'oauth' && authFlow.authUrl) {
+              setAuthUrl(authFlow.authUrl);
+              setAuthConnectionId(authFlow.connectionId);
+              setAuthToolkit(toolkit);
+              setSearchQuery('');
+              setScreen('auth');
+            } else {
+              // Non-OAuth, save immediately as active
+              await db.createComposioConnection({
+                name: toolkit.displayName,
+                composioAccountId: authFlow.connectionId,
+                composioToolkit: toolkit.name,
+                tools: [],
+                authStatus: 'active',
+              });
+
+              setSearchQuery('');
+              await loadData();
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to add connection');
+            setScreen('error');
+          }
         }}
         onBack={() => {
           setSearchQuery('');
@@ -163,6 +206,38 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
           await loadData();
         }}
         onBack={() => setScreen('list')}
+      />
+    );
+  }
+
+  // Render auth screen
+  if (screen === 'auth' && authUrl && authConnectionId && authToolkit) {
+    return (
+      <OAuthAuthScreen
+        authUrl={authUrl}
+        connectionId={authConnectionId}
+        toolkitName={authToolkit.displayName}
+        onComplete={async (status) => {
+          setScreen('loading');
+
+          // Save connection with actual auth status
+          const db = getComposioDatabase();
+          await db.createComposioConnection({
+            name: authToolkit.displayName,
+            composioAccountId: authConnectionId,
+            composioToolkit: authToolkit.name,
+            tools: [],
+            authStatus: status,
+          });
+
+          // Reset auth state
+          setAuthUrl('');
+          setAuthConnectionId('');
+          setAuthToolkit(null);
+
+          // Reload data and return to list
+          await loadData();
+        }}
       />
     );
   }
@@ -272,14 +347,14 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
       // Category header
       items.push({
         label: `─── ${category} (${tkts.length}) ${'─'.repeat(40)}`,
-        value: `category:${category}`,
+        value: `category-header:${category}`,
       });
 
       // Services in category
       tkts.forEach((toolkit) => {
         items.push({
           label: `  ${toolkit.displayName} - ${toolkit.description.slice(0, 50)}${toolkit.description.length > 50 ? '...' : ''}`,
-          value: toolkit,
+          value: `toolkit:${toolkit.name}`,
         });
       });
     });
@@ -321,8 +396,12 @@ const BrowseToolkits: React.FC<BrowseToolkitsProps> = ({
             onSelect={(item) => {
               if (item.value === 'back') {
                 onBack();
-              } else if (typeof item.value === 'object') {
-                onSelect(item.value as ComposioToolkit);
+              } else if (typeof item.value === 'string' && item.value.startsWith('toolkit:')) {
+                const toolkitName = item.value.replace('toolkit:', '');
+                const toolkit = toolkits.find((t) => t.name === toolkitName);
+                if (toolkit) {
+                  onSelect(toolkit);
+                }
               }
             }}
           />
@@ -400,72 +479,10 @@ const ConnectionOptions: React.FC<ConnectionOptionsProps> = ({
 
 // ============== Helper Functions ==============
 
+// This function is now just a stub - actual implementation moved to component level
+// It's referenced in the onSelect callback but not used anymore
 async function addConnection(toolkit: ComposioToolkit) {
-  const client = getComposioClient();
-  const db = getComposioDatabase();
-
-  console.log(chalk.cyan(`\nConnecting to ${toolkit.displayName}...`));
-
-  // Initiate connection
-  const authFlow = await client.initiateConnection({
-    toolkitName: toolkit.name,
-  });
-
-  if (!authFlow.connectionId) {
-    console.error(chalk.red('✗ Failed to initiate connection'));
-    return;
-  }
-
-  if (authFlow.type === 'oauth' && authFlow.authUrl) {
-    console.log(chalk.yellow('\n📎 Open this URL to authenticate:'));
-    console.log(chalk.blue(authFlow.authUrl));
-    console.log(chalk.gray('\nWaiting for authentication to complete (max 5 minutes)...'));
-    console.log(chalk.gray('Press Ctrl+C to cancel\n'));
-
-    // Poll for completion
-    const maxAttempts = 60;
-    let attempts = 0;
-    let authComplete = false;
-
-    while (attempts < maxAttempts && !authComplete) {
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      attempts++;
-
-      try {
-        const status = await client.checkConnectionStatus(authFlow.connectionId);
-
-        if (status === 'active') {
-          authComplete = true;
-          console.log(chalk.green('\n✓ Authentication successful!'));
-        } else if (status === 'failed') {
-          console.error(chalk.red('\n✗ Authentication failed'));
-          return;
-        }
-
-        process.stdout.write(chalk.gray('.'));
-      } catch (error) {
-        process.stdout.write(chalk.gray('.'));
-      }
-    }
-
-    if (!authComplete) {
-      console.error(chalk.red('\n✗ Authentication timed out'));
-      return;
-    }
-  }
-
-  // Get tools
-  const tools = await client.getToolkitTools(toolkit.name);
-
-  // Save to database
-  await db.createComposioConnection({
-    name: toolkit.displayName,
-    composioAccountId: authFlow.connectionId,
-    composioToolkit: toolkit.name,
-    tools,
-  });
-
-  console.log(chalk.green(`✓ Connection created: ${toolkit.displayName}\n`));
+  // Not used - kept for backwards compatibility
 }
 
 async function reauthenticateConnection(connection: Connection) {
@@ -480,14 +497,54 @@ async function reauthenticateConnection(connection: Connection) {
     toolkitName: connection.composioToolkit,
   });
 
+  if (!authFlow.connectionId) {
+    console.error(chalk.red('✗ Failed to initiate reauthentication'));
+    return;
+  }
+
+  let finalStatus: 'active' | 'needs_auth' | 'expired' | 'failed' = 'needs_auth';
+
   if (authFlow.type === 'oauth' && authFlow.authUrl) {
     console.log(chalk.yellow('\n📎 Open this URL to authenticate:'));
     console.log(chalk.blue(authFlow.authUrl));
-    console.log(chalk.gray('Press Enter when done...'));
+    console.log(chalk.gray('\nWaiting for authentication... (max 5 minutes)\n'));
+
+    // Poll for completion
+    const maxAttempts = 60;
+    let attempts = 0;
+
+    while (attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      attempts++;
+
+      try {
+        const status = await client.checkConnectionStatus(authFlow.connectionId);
+
+        if (status === 'active') {
+          finalStatus = 'active';
+          console.log(chalk.green('\n✓ Reauthentication successful!'));
+          break;
+        } else if (status === 'failed') {
+          finalStatus = 'failed';
+          console.error(chalk.red('\n✗ Reauthentication failed'));
+          break;
+        }
+
+        process.stdout.write(chalk.gray('.'));
+      } catch (error) {
+        process.stdout.write(chalk.gray('.'));
+      }
+    }
+
+    if (finalStatus === 'needs_auth') {
+      console.error(chalk.red('\n✗ Reauthentication timed out'));
+    }
+  } else {
+    finalStatus = 'active';
   }
 
-  await db.updateConnectionAuthStatus(connection.id, 'active');
-  console.log(chalk.green('✓ Reauthentication initiated\n'));
+  await db.updateConnectionAuthStatus(connection.id, finalStatus);
+  console.log(chalk.gray(`Status updated to: ${finalStatus}\n`));
 }
 
 async function toggleConnectionActive(connection: Connection) {
