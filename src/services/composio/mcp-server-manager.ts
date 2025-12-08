@@ -229,6 +229,9 @@ export class ComposioMcpServerManager {
         mcpConfig[`composio-${conn.composioToolkit}`] = {
           url: toolkitMcp.mcpUrl,
           transport: 'http',
+          headers: {
+            'X-API-Key': config.composio.apiKey,
+          },
         };
         console.log(`[MCP Manager]   Added toolkit MCP: ${conn.composioToolkit}`);
       }
@@ -243,6 +246,9 @@ export class ComposioMcpServerManager {
       mcpConfig[`composio-step-${stepOrder}`] = {
         url: stepMcp.mcpUrl,
         transport: 'http',
+        headers: {
+          'X-API-Key': config.composio.apiKey,
+        },
       };
       console.log(`[MCP Manager]   Added step MCP: ${stepMcp.mcpServerId}`);
     }
