@@ -148,6 +148,43 @@ export async function loadConnectionsFromDatabase(
 }
 
 /**
+ * Load Composio connection tools for validation
+ * Composio connections aren't added to MCP config (handled by MCP Server Manager),
+ * but we still need their tools list for allowedTools validation
+ *
+ * @param connectionNames - Names of connections to load
+ * @returns Array of tool names from Composio connections
+ */
+async function loadComposioTools(connectionNames: string[]): Promise<string[]> {
+  if (connectionNames.length === 0) {
+    return [];
+  }
+
+  try {
+    const connections = await prisma.connection.findMany({
+      where: {
+        name: { in: connectionNames },
+        isActive: true,
+        type: 'composio',
+      },
+      select: {
+        tools: true,
+        name: true,
+      },
+    });
+
+    const tools = connections.flatMap((c) => c.tools || []);
+    console.log(
+      `[Connection Resolver] Loaded ${tools.length} Composio tools from ${connections.length} connection(s)`
+    );
+    return tools;
+  } catch (error) {
+    console.error(`[Connection Resolver] Error loading Composio tools:`, error);
+    return [];
+  }
+}
+
+/**
  * Fallback: Load connections from environment variable if database is empty
  *
  * @param connectionNames - Names of connections to load
@@ -313,14 +350,18 @@ export async function resolveStepConnections(
     connections = loadConnectionsFromEnv(connectionNames);
   }
 
-  // 4. Build MCP format for Claude SDK
+  // 4. Load Composio tools separately (for validation)
+  const composioTools = await loadComposioTools(connectionNames);
+
+  // 5. Build MCP format for Claude SDK
   const mcpConnections = buildMcpConnections(connections);
 
-  // 5. Collect all available MCP tools
-  const availableTools = connections.flatMap((c) => c.tools);
+  // 6. Collect all available MCP tools (standard connections + Composio)
+  const standardTools = connections.flatMap((c) => c.tools);
+  const availableTools = [...standardTools, ...composioTools];
 
   console.log(
-    `[Connection Resolver] Total available MCP tools: ${availableTools.length}`
+    `[Connection Resolver] Total available MCP tools: ${availableTools.length} (${standardTools.length} standard + ${composioTools.length} Composio)`
   );
 
   // 6. Filter based on allowedTools (three-tier logic)

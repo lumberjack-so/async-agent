@@ -74,6 +74,7 @@ export async function executeWorkflowAgent(
     };
 
     console.log(`[WorkflowAgent] Total MCP servers: ${Object.keys(allMcpServers).length}`);
+    console.log(`[WorkflowAgent] MCP servers config:`, JSON.stringify(allMcpServers, null, 2));
 
     // Build step-specific system prompt
     const baseSystemPrompt = systemPrompt || (await loadSystemPrompt());
