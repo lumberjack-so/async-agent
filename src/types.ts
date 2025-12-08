@@ -13,11 +13,17 @@ export type ExecutionMode = 'classifier' | 'orchestrator' | 'default';
 /**
  * MCP Server configuration
  * Matches the Claude Agent SDK mcpServers format
+ * Supports both command-based (stdio) and URL-based (streamable HTTP) MCP servers
  */
 export interface McpServerConfig {
-  command: string;
-  args: string[];
+  // Command-based MCP (stdio)
+  command?: string;
+  args?: string[];
   env?: Record<string, string>;
+
+  // URL-based MCP (streamable HTTP) - for Composio and other HTTP-based MCP servers
+  url?: string;
+  transport?: 'http';
 }
 
 /**

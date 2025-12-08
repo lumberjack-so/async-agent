@@ -7,13 +7,28 @@
 import type { ComposioToolkit } from '../../types/composio.js';
 
 /**
+ * SDK built-in tools (not Composio toolkits)
+ */
+const SDK_TOOLS = new Set([
+  'Task', 'Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep',
+  'WebFetch', 'WebSearch', 'TodoWrite', 'AskUserQuestion',
+  'NotebookEdit', 'BashOutput', 'KillShell'
+]);
+
+/**
  * Extract toolkit names from tool names
- * Example: ["GITHUB_CREATE_ISSUE", "SLACK_SEND_MESSAGE"] → ["github", "slack"]
+ * Example: ["GITHUB_CREATE_ISSUE", "SLACK_SEND_EMAIL"] → ["github", "slack"]
+ * Filters out SDK tools like "Read", "Write", etc.
  */
 export function extractToolkits(tools: string[]): string[] {
   const toolkits = new Set<string>();
 
   for (const tool of tools) {
+    // Skip SDK built-in tools
+    if (SDK_TOOLS.has(tool)) {
+      continue;
+    }
+
     const parts = tool.split('_');
     if (parts.length > 0) {
       const toolkit = parts[0].toLowerCase();

@@ -7,6 +7,7 @@
 import chalk from 'chalk';
 import { getComposioClient, isComposioAvailable } from '../../../services/composio/client.js';
 import { getComposioDatabase } from '../../../services/composio/database.js';
+import { getMcpServerManager } from '../../../services/composio/mcp-server-manager.js';
 
 export async function addConnectionCommand(toolkitName: string) {
   try {
@@ -100,7 +101,19 @@ export async function addConnectionCommand(toolkitName: string) {
     });
 
     console.log(chalk.green(`\n✓ Connection created: ${toolkit.displayName}`));
-    console.log(chalk.gray(`Connection ID: ${authFlow.connectionId}\n`));
+    console.log(chalk.gray(`Connection ID: ${authFlow.connectionId}`));
+
+    // Create toolkit-level MCP server
+    console.log(chalk.gray('Creating MCP server...'));
+    try {
+      const mcpManager = getMcpServerManager();
+      const mcpResult = await mcpManager.getOrCreateToolkitMcp(toolkit.name);
+      console.log(chalk.green(`✓ MCP server created: ${mcpResult.mcpServerId}`));
+      console.log(chalk.gray(`MCP tools available: ${mcpResult.tools.length}\n`));
+    } catch (error) {
+      console.warn(chalk.yellow('⚠ Failed to create MCP server (connection still created)'));
+      console.error(error);
+    }
   } catch (error) {
     console.error(chalk.red('✗ Failed to add connection'));
     if (error && typeof error === 'object' && 'response' in error) {

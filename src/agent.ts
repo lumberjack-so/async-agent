@@ -79,7 +79,7 @@ export async function executeAgent(
       options: {
         model: config.agent.model,
         systemPrompt: finalSystemPrompt,
-        mcpServers: mcpConnections,
+        mcpServers: mcpConnections as any,
         cwd: workingDirectory,
         permissionMode: 'bypassPermissions',
         disallowedTools:

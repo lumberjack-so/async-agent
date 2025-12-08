@@ -13,6 +13,8 @@ import { extractResponseText, parseDisallowedTools } from './shared/agent-utils.
 import type { SDKMessage, SDKSystemInitMessage } from './shared/sdk-types.js';
 import { resolveStepConnections, isSDKBuiltinTool } from './connection-resolver.js';
 import { sendStreamUpdate } from './routes/stream.js';
+import { getMcpServerManager } from './services/composio/mcp-server-manager.js';
+import { isComposioAvailable } from './services/composio/client.js';
 
 // Parse global disallowed tools from environment
 const GLOBAL_DISALLOWED_TOOLS = parseDisallowedTools();
@@ -49,6 +51,27 @@ export async function executeWorkflowAgent(
   try {
     // Resolve per-step connections from database
     const stepConnections = await resolveStepConnections(step, skill);
+
+    // Load Composio MCP server config for this step
+    let composioMcpConfig: Record<string, any> = {};
+    if (isComposioAvailable()) {
+      try {
+        const mcpManager = getMcpServerManager();
+        composioMcpConfig = await mcpManager.getMcpConfigForStep(skill.id, step.id);
+        console.log(`[WorkflowAgent] Loaded Composio MCP config with ${Object.keys(composioMcpConfig).length} server(s)`);
+      } catch (error) {
+        console.warn('[WorkflowAgent] Failed to load Composio MCP config:', error);
+        // Continue without Composio MCP config
+      }
+    }
+
+    // Merge standard MCP connections with Composio MCP config
+    const allMcpServers = {
+      ...stepConnections.mcpConnections,
+      ...composioMcpConfig,
+    };
+
+    console.log(`[WorkflowAgent] Total MCP servers: ${Object.keys(allMcpServers).length}`);
 
     // Build step-specific system prompt
     const baseSystemPrompt = systemPrompt || (await loadSystemPrompt());
@@ -99,7 +122,7 @@ export async function executeWorkflowAgent(
     const queryOptions: any = {
       model: config.agent.model,
       systemPrompt: stepSystemPrompt,
-      mcpServers: stepConnections.mcpConnections,  // Per-step connections
+      mcpServers: allMcpServers,  // Merged standard + Composio MCP servers
       cwd: workingDirectory,
       permissionMode: 'bypassPermissions',
     };

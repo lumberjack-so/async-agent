@@ -111,12 +111,34 @@ export class ComposioClient {
       params: { toolkit: toolkitName },
     });
 
-    const existingConfigs = response.data.items || [];
+    const allConfigs = response.data.items || [];
+
+    // DEBUG: Log what we got back
+    console.log(`\n🔍 getOrCreateAuthConfig('${toolkitName}'):`);
+    console.log(`   Total configs returned: ${allConfigs.length}`);
+    if (allConfigs.length > 0) {
+      console.log('   Configs:', allConfigs.map((c: any) => ({
+        id: c.id,
+        toolkit: c.toolkit?.slug || c.toolkit,
+        name: c.name,
+      })));
+    }
+
+    // Filter to only configs for THIS toolkit (in case API ignores filter)
+    const existingConfigs = allConfigs.filter((c: any) => {
+      const configToolkit = c.toolkit?.slug || c.toolkit;
+      return configToolkit === toolkitName;
+    });
+
+    console.log(`   Filtered to ${existingConfigs.length} matching configs for ${toolkitName}`);
+
     if (existingConfigs.length > 0) {
+      console.log(`   ✓ Using existing auth config: ${existingConfigs[0].id}`);
       return existingConfigs[0].id;
     }
 
     // Create new Composio-managed auth config
+    console.log(`   Creating new auth config for ${toolkitName}...`);
     const createResponse = await this.client.post('/v3/auth_configs', {
       toolkit: { slug: toolkitName },
       name: toolkitName,
@@ -125,6 +147,7 @@ export class ComposioClient {
       },
     });
 
+    console.log(`   ✓ Created auth config: ${createResponse.data.auth_config.id}`);
     return createResponse.data.auth_config.id;
   }
 

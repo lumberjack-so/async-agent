@@ -108,9 +108,18 @@ export async function loadConnectionsFromDatabase(
     const resolved: ResolvedConnection[] = [];
 
     for (const conn of connections) {
+      // Skip Composio connections - they're handled separately via MCP Server Manager
+      if (conn.type === 'composio') {
+        console.log(
+          `[Connection Resolver] Skipping Composio connection "${conn.name}" (handled by MCP Server Manager)`
+        );
+        continue;
+      }
+
       // Prisma returns config as Json type, need to cast to expected structure
       const config = conn.config as any;
 
+      // Standard MCP connections require command and args
       if (!config.command || !Array.isArray(config.args)) {
         console.error(
           `[Connection Resolver] Invalid config for connection "${conn.name}" - skipping`

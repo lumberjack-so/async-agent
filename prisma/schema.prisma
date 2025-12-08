@@ -194,3 +194,46 @@ model ComposioToolkit {
   @@index([category])
   @@map("composio_toolkits")
 }
+
+// NEW MODEL: Composio Toolkit-Level MCP Servers (one per toolkit, reusable)
+model ComposioToolkitMcp {
+  id              String    @id @default(uuid())
+  /// Toolkit name (e.g., 'gmail', 'github', 'slack')
+  toolkit         String    @unique
+  /// Composio auth config ID used for this toolkit
+  authConfigId    String    @map("auth_config_id")
+  /// Composio MCP server ID (from API response)
+  mcpServerId     String    @map("mcp_server_id")
+  /// SSE URL for Claude SDK mcpServers config
+  mcpUrl          String    @map("mcp_url")
+  /// Available tools from this toolkit
+  tools           String[]
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([toolkit])
+  @@map("composio_toolkit_mcps")
+}
+
+// NEW MODEL: Composio Step-Level Custom MCP Servers (per skill step)
+model ComposioStepMcp {
+  id              String    @id @default(uuid())
+  /// Skill ID this MCP belongs to
+  skillId         String    @map("skill_id")
+  /// Step order within the skill (0-indexed)
+  stepOrder       Int       @map("step_order")
+  /// Composio auth config IDs used for this step
+  authConfigIds   String[]  @map("auth_config_ids")
+  /// Composio MCP server ID (from API response)
+  mcpServerId     String    @map("mcp_server_id")
+  /// SSE URL for Claude SDK mcpServers config
+  mcpUrl          String    @map("mcp_url")
+  /// Allowed tools for this step (cherry-picked)
+  allowedTools    String[]  @map("allowed_tools")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([skillId, stepOrder])
+  @@index([skillId])
+  @@map("composio_step_mcps")
+}
