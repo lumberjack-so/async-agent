@@ -226,8 +226,11 @@ export class ComposioMcpServerManager {
       });
 
       if (toolkitMcp) {
+        // Add connected_account_id query parameter to MCP URL
+        const mcpUrl = `${toolkitMcp.mcpUrl}?connected_account_id=${conn.composioAccountId}`;
+
         mcpConfig[`composio-${conn.composioToolkit}`] = {
-          url: toolkitMcp.mcpUrl,
+          url: mcpUrl,
           transport: 'http',
           headers: {
             'X-API-Key': config.composio.apiKey,
@@ -243,8 +246,15 @@ export class ComposioMcpServerManager {
     });
 
     if (stepMcp) {
+      // Use the first connection's account ID for the step MCP
+      // (step MCPs are created with tools from all connections)
+      const firstConnection = composioConnections[0];
+      const mcpUrl = firstConnection?.composioAccountId
+        ? `${stepMcp.mcpUrl}?connected_account_id=${firstConnection.composioAccountId}`
+        : stepMcp.mcpUrl;
+
       mcpConfig[`composio-step-${stepOrder}`] = {
-        url: stepMcp.mcpUrl,
+        url: mcpUrl,
         transport: 'http',
         headers: {
           'X-API-Key': config.composio.apiKey,
