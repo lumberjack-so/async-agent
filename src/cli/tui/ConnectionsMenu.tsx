@@ -171,6 +171,19 @@ export const ConnectionsMenu: React.FC<ConnectionsMenuProps> = ({ onBack }) => {
       console.log(chalk.yellow(`⚠ Connection created with status: ${finalStatus}\n`));
       console.log(chalk.gray('You may need to reauthenticate this connection later.\n'));
     }
+
+    // Create toolkit-level MCP server
+    console.log(chalk.gray('Creating MCP server...'));
+    try {
+      const { getMcpServerManager } = await import('../../services/composio/mcp-server-manager.js');
+      const mcpManager = getMcpServerManager();
+      const mcpResult = await mcpManager.getOrCreateToolkitMcp(toolkit.name);
+      console.log(chalk.green(`✓ MCP server created: ${mcpResult.mcpServerId}`));
+      console.log(chalk.gray(`MCP tools available: ${mcpResult.tools.length}\n`));
+    } catch (error) {
+      console.warn(chalk.yellow('⚠ Failed to create MCP server (connection still created)'));
+      console.error(error);
+    }
   }
 
   async function reauthenticateConnection(connection: Connection) {
