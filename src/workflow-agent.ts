@@ -21,6 +21,7 @@ const GLOBAL_DISALLOWED_TOOLS = parseDisallowedTools();
 
 export interface ExecuteWorkflowAgentOptions {
   step: WorkflowStep;
+  stepIndex: number;  // Step index in workflow (0, 1, 2...) for MCP config lookup
   skill: Workflow;  // Parent workflow for connection fallback
   userPrompt: string;
   requestId: string;
@@ -39,6 +40,7 @@ export async function executeWorkflowAgent(
 ): Promise<WorkflowAgentResponse> {
   const {
     step,
+    stepIndex,
     skill,
     userPrompt,
     requestId,
@@ -57,7 +59,7 @@ export async function executeWorkflowAgent(
     if (isComposioAvailable()) {
       try {
         const mcpManager = getMcpServerManager();
-        composioMcpConfig = await mcpManager.getMcpConfigForStep(skill.id, step.id);
+        composioMcpConfig = await mcpManager.getMcpConfigForStep(skill.id, stepIndex);
         console.log(`[WorkflowAgent] Loaded Composio MCP config with ${Object.keys(composioMcpConfig).length} server(s)`);
       } catch (error) {
         console.warn('[WorkflowAgent] Failed to load Composio MCP config:', error);

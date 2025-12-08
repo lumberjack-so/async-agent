@@ -110,6 +110,7 @@ export async function executeWorkflowOrchestrator(
       // Execute step
       const stepResult: WorkflowAgentResponse = await executeWorkflowAgent({
         step,
+        stepIndex: i,  // Pass step index for MCP config lookup
         skill: workflow,  // Pass full workflow for connection resolution
         userPrompt,
         requestId,
@@ -183,6 +184,7 @@ Provide a clear, comprehensive answer that incorporates all the relevant data yo
 
     const synthesisResult: WorkflowAgentResponse = await executeWorkflowAgent({
       step: synthesisStep,
+      stepIndex: sortedSteps.length,  // Synthesis step (no MCP config needed)
       skill: workflow,  // Pass full workflow for connection resolution
       userPrompt,
       requestId,
