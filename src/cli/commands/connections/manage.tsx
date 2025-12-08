@@ -259,6 +259,19 @@ const ConnectionManager: React.FC<Props> = ({ onExit }) => {
             });
             console.log('🔍 Connection saved successfully');
 
+            // Create toolkit-level MCP server
+            console.log('🔍 Creating MCP server...');
+            try {
+              const { getMcpServerManager } = await import('../../../services/composio/mcp-server-manager.js');
+              const mcpManager = getMcpServerManager();
+              const mcpResult = await mcpManager.getOrCreateToolkitMcp(authToolkit.name);
+              console.log(`🔍 ✓ MCP server created: ${mcpResult.mcpServerId}`);
+              console.log(`🔍   MCP tools available: ${mcpResult.tools.length}`);
+            } catch (error) {
+              console.warn('🔍 ⚠ Failed to create MCP server (connection still created)');
+              console.error(error);
+            }
+
             // Reset auth state
             setAuthUrl('');
             setAuthConnectionId('');
