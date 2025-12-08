@@ -64,14 +64,16 @@ export class ComposioMcpServerManager {
 
     // Create toolkit-level MCP server via Composio API
     console.log(`[MCP Manager] Creating toolkit MCP server for ${toolkit}...`);
+    // Use short random ID to keep name under 30 chars (e.g., "gmail-mcp-a1b2")
+    const randomId = Math.random().toString(36).substring(2, 6);
     const response = await this.client.post('/v3/mcp/servers', {
-      name: `${toolkit}-toolkit-mcp`,
+      name: `${toolkit}-mcp-${randomId}`,
       auth_config_ids: [authConfigId],
     });
 
     const mcpServerId = response.data.id;
-    const mcpUrl = response.data.url;
-    const tools = response.data.tools || [];
+    const mcpUrl = response.data.mcp_url;
+    const tools = response.data.allowed_tools || [];
 
     console.log(`[MCP Manager] ✓ Created toolkit MCP: ${mcpServerId}`);
     console.log(`[MCP Manager]   URL: ${mcpUrl}`);
@@ -133,7 +135,7 @@ export class ComposioMcpServerManager {
     });
 
     const mcpServerId = response.data.id;
-    const mcpUrl = response.data.url;
+    const mcpUrl = response.data.mcp_url;
 
     console.log(`[MCP Manager] ✓ Created step MCP: ${mcpServerId}`);
     console.log(`[MCP Manager]   URL: ${mcpUrl}`);

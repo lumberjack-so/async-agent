@@ -5,6 +5,10 @@
  * with proper defaults, type coercion, and validation.
  */
 
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 /**
  * Parse integer from environment variable with default
  */
