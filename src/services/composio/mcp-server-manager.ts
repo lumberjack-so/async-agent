@@ -200,7 +200,6 @@ export class ComposioMcpServerManager {
     // Load skill to get connection names
     const skill = await prisma.skill.findUnique({
       where: { id: skillId },
-      include: { connections: true },
     });
 
     if (!skill) {
@@ -208,7 +207,13 @@ export class ComposioMcpServerManager {
     }
 
     // Add toolkit-level MCPs (skill-level fallback)
-    const composioConnections = skill.connections.filter((c) => c.source === 'composio');
+    // Query connections by name from connectionNames array (not using relation)
+    const composioConnections = await prisma.connection.findMany({
+      where: {
+        name: { in: skill.connectionNames },
+        source: 'composio',
+      },
+    });
     console.log(`[MCP Manager] Found ${composioConnections.length} Composio connections`);
 
     for (const conn of composioConnections) {
