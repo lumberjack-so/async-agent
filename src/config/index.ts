@@ -7,7 +7,16 @@
 
 // Load environment variables first
 import dotenv from 'dotenv';
-dotenv.config();
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Get project root (two levels up from compiled file: dist/config/index.js -> dist/ -> project root)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '..', '..');
+
+// Load .env file from project root (not current working directory)
+dotenv.config({ path: join(projectRoot, '.env') });
 
 /**
  * Parse integer from environment variable with default
